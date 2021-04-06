@@ -1,0 +1,568 @@
+# Interpolation
+<style type="text/css">
+  .reveal p {
+    text-align: left;
+  }
+  .reveal ul {
+    display: block;
+  }
+  .reveal ol {
+    display: block;
+  }
+</style>
+```julia echo=false
+using Gadfly 
+set_default_plot_size(12inch, 6inch) #set size
+#make lines and points thicker and bigger labels
+Gadfly.push_theme(Theme(major_label_font_size=20pt,minor_label_font_size=14pt,key_label_font_size=16pt,
+                        line_width=2pt,point_size=3pt))
+```
+## Introduction
+
+* Recall our bellman equation from our first example
+$$
+    V(k) = \max_c \ln(c) + \beta V(Ak^\alpha - c)
+$$
+* We showed that if $V_j(k) = E_j + F_j \ln(k)$ then
+$$
+    V_{j+1}(k) = E_{j+1} + F_{j+1}\ln(k)
+$$
+* Here we have projected $V$ on the space of functions which are linear combinations of $1$ and $\ln(k)$
+* Can this idea be extended more generally?
+
+## Interpolation
+
+* Want: to represent a real-valued function $f$ in a computationally tractable way
+* Idea: we have a set of basis functions $\{\phi_j(x)\}_{j=0}^n$ (will go into more detail later)
+* Solution: find the linear combination of these basis functions 
+$$
+    \tilde f(x) = \sum_{j=0}^n w_j \phi_j(x)
+$$that best fit $f$
+* Now we have approximated $f$ via a vector of coefficents $w$
+* We are now left with what "best fit" means
+
+## Collocation
+* We have $n+1$ coefficients, so need at least $n+1$ conditions
+* Simplest idea: choose $n+1$ points $\{x_i\}_{i=0}^n$ and ensure that
+$$
+    \tilde f(x_i) = \sum_{j=0}^n w_j \phi_j(x_i) = f(x_i)
+$$
+* Best part: This is a linear system!
+    * Let $\Phi$ be a matrix such that $\Phi_{ij} = \phi_j(x_i)$
+    * Let $y$ be a vector such that $y_i = f(x_i)$
+* Then this condition amounts to
+$$
+    \Phi w = y
+$$or
+$$
+    w = \Phi^{-1}y
+$$
+
+## Least Squares
+* If we have more interpolation nodes than basis functions, then we can define residuals
+$$
+r = y - \Phi w
+$$
+* If we minimize the sum of squared residuals then
+$$
+    w = (\Phi'\Phi)^{-1}\Phi'y
+$$
+* All that remains is to decide on the basis functions
+* We'll go other to types:
+    * Finite element
+    * Spectral basis functions
+
+## Finite Element Methods
+* Finite element methods use a **local basis**, i.e. all the basis functions are zero for a portion of the domain
+* We call these approximation splines
+* An order $n$ spline consists of a series of $n^{th}$ order polynomial segments
+    * spliced together to preserve continuity of derivatives $n-1$ or less
+* The points at which these pieces are spliced together are called knots
+    * with first and last knots at the extreme of the domain
+
+## B-Splines
+* B-splines form the basis function to do spline interpolation
+* Suppose we have a grid with knots $x_1<x_2<...<x_K$
+* Define 
+$$
+    B^0_k(x) = \begin{cases}1&\text{ if $x_k\leq x < x_{k+1}$ }\\ 0&\text{otherwise}\end{cases}
+$$
+* Linear Splines
+$$
+    B^1_k(x) = \begin{cases}\frac{x-x_{k-1}}{x_k-x_{k-1}} & \text{ if $x_{k-1}\leq x < x_k$}\\ \frac{x_{k+1}-x}{x_{k+1}-x_k} & \text{if $x_k\leq x < x_{k+1}$}\\0&\text{otherwise}\end{cases}
+$$
+
+## Linear B-Spline
+```julia
+"""
+    B1(x,k,xvec)
+
+Constructs the kth linear B-splines using knot points xvec.
+"""
+function B1(x,k,xvec)
+    n = length(xvec)
+    #check if first condition is satisfied
+    if x <= xvec[k] && k>1 && x >= xvec[k-1]
+        return (x-xvec[k-1])/(xvec[k]-xvec[k-1])
+    end
+    #check if second condition
+    if x >= xvec[k] && k < n && x <= xvec[k+1]
+        return (xvec[k+1]-x)/(xvec[k+1]-xvec[k])
+    end
+    #otherwise return 0.
+    return 0.
+end
+```
+
+## Plotting Linear B-Splines
+```julia fig_width=10; fig_height=5
+xvec = LinRange(0,1,9)
+layers = [layer(x->B1(x,k,xvec),0,1) for k in 1:9]
+plot(layers...,Guide.xlabel("x"),Guide.ylabel("Linear Basis Function"))
+```
+
+## Interpolation Using Linear B-Splines
+* Note that only one of the B-Splines is 1 at each of the knot points
+    * All the others are zero
+
+* Therefore we can easily approximate $f$ as
+$$
+    \tilde f(x) = \sum_{k=1}^K f(x_k)B^1_k(x)
+$$
+* Note that if $x_k \leq x < x$ then
+\begin{align*}
+    \tilde f(x) &= f(x_k) \frac{x_{k+1}-x}{x_{k+1}-x_k} + f(x_{k+1})\frac{x-x_k}{x_{k+1}-x_k}\\
+                &= f(x_k)\left(1 -\frac{x-x_k}{x_{k+1}-x_k}\right)  + f(x_{k+1})\frac{x-x_k}{x_{k+1}-x_k}\\
+                &= f(x_k) + [f(x_{k+1})-f(x_k)]\frac{x-x_k}{x_{k+1}-x_k}
+\end{align*}
+* Which is a familiar formula for interpolation
+
+## Example
+```julia fig_width=10; fig_height=5
+#Using linear B-Splines
+f(x) = log.(x.+0.1) # our function to interpolate
+xvec = LinRange(0,1,5) #knots for the B splines
+function fhat(x,f,xvec)
+    K = length(xvec)
+    ret = 0.
+    for k in 1:K
+        ret += f(xvec[k])*B1(x,k,xvec)
+    end
+    return ret
+end
+
+plot(layer(x->f(x),0,1,color=["True Function"]),
+    layer(x->fhat(x,f,xvec),0,1,color=["Approximation"]),
+    Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+## Advantages and Disadvantages
+**Pros:**
+
+* Can preserve shape of f(monotonicity and concavity)
+
+* Can exploit information about $f$ (relative to spectral methods later)
+    * Can place more points in points of high curvature
+
+* Can capture binding constraints very well
+
+**Cons:**
+
+* Approximating function is not differentiable at knots
+
+* $\hat f''= 0$ (except at knots where it is undefined)
+
+## Higher Order Splines
+* There are extensions to higher orders via the recursion
+$$
+    B^n_k = \frac{x-x_k}{x_{k+n}-x_k}B^{n-1}_k(x) + \frac{x_{k+n+1}-x}{x_{k+n+1}-x_k}B^{n-1}_{k+1}(x)
+$$
+* Generally there are $K+n-1$ B-Splines for a given vector of knots
+    * Knot vector won't match points where true function is evaluated
+* Able to preserve differentiability
+    * Spline function is differentiable to order n-1    
+* We're going to use the BasisMatrices package
+    * Gives us fine tune control over basis functions
+    * Based on CompEcon which is standard
+
+## Example
+```julia fig_width=10; fig_height=5
+using BasisMatrices
+#Most basic usage
+xvec = LinRange(0,1,4) #break points for the B splines
+fhat1 = Interpoland(SplineParams(xvec,0,1),f) #linear Interpolation
+fhat3 = Interpoland(SplineParams(xvec,0,3),f) #cubic Interpolation
+
+plot(layer(x->f(x),0,1,color=["True Function"]),
+    layer(x->fhat1(x),0,1,color=["Linear Approx."]),
+    layer(x->fhat3(x),0,1,color=["Cubic Approx."]),
+    Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+
+## Extrapolation
+```julia fig_width=10; fig_height=5
+plot(layer(x->f(x),0,2.,color=["True Function"]),
+    layer(x->fhat1(x),0.,2.,color=["Linear Approx."]),
+    layer(x->fhat3(x),0,2.,color=["Cubic Approx."]),
+    Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+## Advantages and Disadvantages
+**Pros:**
+
+* Easy to compute
+* Smooth approximation
+* Can add curvature in dimensions that need it
+
+**Cons:**
+
+* May not handle constraints well
+* Can perform badly if function is not differentiable
+
+## Example
+```julia fig_width=10; fig_height=5
+f2(x) = x < 0.5 ? 0 : x - 0.5 # returns 0 if x < 0.5 otherwise x - 0.5
+fhat1 = Interpoland(SplineParams(xvec,0,1),x->f2.(x))
+fhat3 = Interpoland(SplineParams(xvec,0,3),x->f2.(x))
+plot(layer(x->f2.(x),0,1,color=["True Function"]),
+    layer(x->fhat1(x),0,1,color=["Linear Approx."]),
+    layer(x->fhat3(x),0,1,color=["Cubic Approx."]),
+    Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+
+
+# Spectral Methods
+## Spectral Methods
+* Finite element have the feature that their support is not the entire domain of $[a,b]$
+    * i.e. $\phi_j(x) = 0$ for many $x$.
+* Spectral methods approximate $f$ using basis functions whos support is the entire domain
+* Generally they are some form of polynomial 
+    * Choice of basis function and grid points do matter. **Why?**
+
+## Theoretical Motivaion
+* **Weierstrass Theorem**: For all continuous functions $f$ and every $\epsilon>0$ there exists a polynomial $q$ for which 
+$$
+    \sup_{x\in[a,b]} |f(x)-q(x)| <\epsilon
+$$
+* There exists a polynomial that approximates any continuous function arbitrarily well in a uniform sense
+* So how do we find a good approximating polynomial?
+
+## Equioscillation theorem
+* Define 
+$$
+    \rho_n(f) = \inf\|f-q_n\|_\infty
+$$ as the minimum distance between $f$ and all polynomials of degree $n$
+* **Equioscillation Theorem:** If $f$ is a continuous function then theres is a unique polynomial, $q_n^*$, that achieves $\rho_n(f)$.  In addition there exists $n+1$ points $a\leq x_1<x_2<\ldots<x_{n+1}\leq b$ such that for $m=1$ or $m=-1$
+$$
+    f(x_j) - q^*_n(x_j) = m (-1)^j \rho_n(f)
+$$
+* Gives an idea of *what the errrors should look like*
+    * Achieve maximum error $n+2$ times
+    * Oscilate between errors
+* Rule of Thumb: The closer errors are to this shape the better
+
+## Monomial Basis
+* Most naive set of polynomials for a basis function 
+$$
+    \phi_j(x) = x^{j-1}
+$$for $j=1,\ldots,n$
+* The approximating function would then look like
+$$
+    \hat f(x) = w_1+ w_2 x+ w_3 x^2+\ldots+ w_n x^{n-1}
+$$
+* For the function evaluated at points $x_1,\ldots, x_n$ we would then solve
+$$
+    \left[\begin{matrix}1 & x_1 & \ldots& x_1^{n-1} \\ 
+    1 & x_2 &\ldots & x_2^{n-1}\\
+      & \vdots& \ddots &\vdots\\
+    1& x_n&\ldots & x_n^{n-1}\end{matrix}\right]\left[\begin{matrix}w_1\\ w_2\\\vdots\\ w_n\end{matrix}\right]=\left[\begin{matrix}y_1\\ y_2\\\vdots\\ y_n\end{matrix}\right]
+$$
+*  This looks nice....  What's the problem?
+
+## Plotting the Monomial Basis Functions
+```julia fig_width=10; fig_height=5
+layers = [layer(x->x.^k,0,1,color=["x^$(k-1)"]) for k in 1:9]
+plot(layers...,Guide.xlabel("x"),Guide.ylabel("x^k"),Guide.colorkey(title=""))
+```
+
+## Fitting the Runge Function
+```julia
+using LinearAlgebra
+n = 9
+Phi = zeros(n,n)
+xvec = LinRange(-1,1,n)
+f_runge(x) = 1 ./(1 .+ 25 .* x.^2) #The Runge Function
+yvec = zeros(n)
+for i in 1:n
+    for k in 1:n
+        Phi[i,k] = xvec[i]^(k-1)
+    end
+    yvec[i] = f_runge(xvec[i])
+end
+w = Phi\yvec #computes coefficients for Interpolation
+det(Phi) #note nearly sigular
+```
+
+## How Good is the fit?
+```julia fig_width=10; fig_height=5
+"""
+    fhatmonomial(x,w::Array{Float64})
+Computes ∑_k w_k x^(k-1)
+"""
+function fhatmonomial(x,w::Array{Float64})
+    n = length(w)
+    fhat = 0.
+    for k in 1:n
+        fhat += w[k]*x^(k-1)
+    end
+    return fhat
+end
+plot(layer(f_runge,-1,1,color=["Runge"]),
+     layer(x->fhatmonomial(x,w),-1,1,color=["Monomial"]),
+     Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+## Othogonal Polynomials
+* The reason why monomials are not a good basis is that they are not orthogonal
+* **Weighting Functions:**  A function $w$ on $[a,b]$ is a positive function almost everywhere with $\int_a^b w(u)du = 1$
+* **Inner Product:** For two functions $f$ and $g$ on $[a,b]$ the inner product with respect to $w$ is
+$$
+    <f,g> = \int_a^b f(u)g(u)w(u)du
+$$
+
+* **Orthogonal Polynomials:** A collection of polynomials $\{\phi_j\}_{j=1}^n$ is orthogonal w.r.t $w$ if $<\phi_i,\phi_k> = 0$ for all $i\neq k$
+* A basis is orthonormal if 
+$$
+    <\phi_i,\phi_j> = \begin{cases}0&\text{if $i\neq j$}\\
+    1 & \text{if $i=j$}\end{cases}
+$$
+* This is a good property because they do a good job of covering the entire interval.
+* Common famalies of orthogonal polynomials: Chebyshev, Lagendre, Laguerre, Hermite
+* We'll focus on Chebyshev
+
+## Chebyhsev Polynomials
+
+*  These polynomials defined by a trigometrix function
+$$
+    T_k = \cos((k-1)\cos^{-1}(x))
+$$ Defined on $[-1,1]$
+*  Alternatively have the recursive formuation
+    * $T_1(x) = \cos(0) = 1$
+    * $T_2(x) = \cos(\cos^{-1}(x)) = x$
+    * $T_{k+1}(x) = 2xT_k(x)-T_{k-1}(x)$
+
+## Plotting Chebyhsev Polynomials
+```julia fig_width=10; fig_height=5
+T(x,k) = cos.((k-1).*acos.(x))
+layers = [layer(x->T(x,k),-1,1,color=["Order $(k-1)"]) for k in 1:9]
+plot(layers...,Guide.xlabel("x"),Guide.ylabel("Chebyshev Polynomials"),Guide.colorkey(title="")) 
+```
+
+## Chebyshev Zeros
+* One can show that the **interpolation nodes that minimize the error** are the zeros of the Chebyshev polynomials
+
+```julia fig_width=10; fig_height=5
+#using BasisMatrix code
+chebbasis = Basis(ChebParams(9,-1,1))
+xnodes = nodes(chebbasis)[1] #Gives nodes for the chebyshev Polynomials (zeros)
+plot(layer(x=xnodes,y=xnodes.*0,color=["Nodes"]),
+     layer(x->T(x,10),-1,1,color=["Chebyshev Polynomial"]),
+     Guide.xlabel("x"),Guide.colorkey(title="")) 
+```
+
+* Places more weight near the ends of the grid
+
+## Fitting with Chebyhsev Polynomials
+```julia fig_width=10; fig_height=5
+f_cheb = Interpoland(chebbasis,f_runge)
+plot(layer(f_runge,-1,1,color=["Runge"]),
+     layer(x->fhatmonomial(x,w),-1,1,color=["monomial"]),
+     layer(x->f_cheb(x),-1,1,color=["Chebyshev"]),
+     Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+## Errors
+```julia fig_width=10; fig_height=5
+plot(layer(x->fhatmonomial(x,w)-f_runge(x),-1,1,color=["Monomial"]),
+    layer(x->f_cheb(x)-f_runge(x),-1,1,color=["Chebyshev"]),
+    Guide.xlabel("x"),Guide.ylabel("Errors"),Guide.colorkey(title=""))
+```
+
+## Compare to Splines
+```julia fig_width=10; fig_height=5
+xgrid = LinRange(-1,1,9) #use 9 grid points like chebyshev
+f_spline = Interpoland(SplineParams(xgrid,0,3),f_runge)
+
+plot(layer(f_runge,-1,1,color=["Runge"]),
+     layer(x->f_spline(x),-1,1,color=["Cubic Spline"]),
+     layer(x->f_cheb(x),-1,1,color=["Chebyshev"]),
+     Guide.xlabel("x"),Guide.ylabel("f(x)"),Guide.colorkey(title=""))
+```
+
+## Errors Relative to Splines
+```julia fig_width=10; fig_height=5
+plot(layer(x->f_spline(x)-f_runge(x),-1,1,color=["Cubic Spline"]),
+    layer(x->f_cheb(x)-f_runge(x),-1,1,color=["Chebyshev"]),
+    Guide.xlabel("x"),Guide.ylabel("Errors"),Guide.colorkey(title=""))
+```
+
+
+# Application to Value Function Iteration
+
+## Value Function Iteration
+* Recall our bellman equation from earlier
+$$
+V(k) = \max_{k'}\ln(Ak^\alpha - k')+\beta V(k')
+$$
+* This gives us the follow map $T$ from functions to functions
+$$
+    T(V)(k) = \max_{k'}\ln(Ak^\alpha - k')+\beta V(k')
+$$
+* Define the sequence starting at $V_0$ by 
+$$
+    V_n = T(V_{n-1})
+$$
+* We know that $V_n\rightarrow V$ with $T(V) = V$
+
+## Adding Interpolation
+* Will approximate $V_n$ using interpolation
+    * Define the mapping $P$ wich takes an arbitrary function $V$ and approximates using interpolation to produce $\hat V = P(V)$
+* We then have the approximation to $T$ by $\hat T$ which is given by
+$$
+    \hat T(V) = P(T(V))
+$$
+* Will be performing the following iteration
+$$
+    \hat V_n = \hat T(\hat V_{n-1})
+$$starting from $\hat V_0 = V_0$
+* Can't guarantee convergence, but will succeed if $P$ is accurate enough
+
+
+## NCParameters type
+```julia
+using Parameters
+@with_kw mutable struct NCParameters
+    A::Float64 = 1.
+    α::Float64 = 0.3
+    β::Float64 = 0.96
+    kgrid::Vector{Float64} = LinRange(0.05,0.5,20)
+    spline_order::Int = 3
+end
+```
+
+## Computing Optimal Decision Rules
+```julia
+using Optim
+"""
+    optimalpolicy(para::NCParameters,Vprime,k)
+
+Computes optimal policy using continuation value function V and current capital
+level k given parameters in para.
+"""
+function optimalpolicy(para::NCParameters,Vprime,k)
+    @unpack A,α,β,kgrid = para
+    k_bounds = [kgrid[1],kgrid[end]]
+    f_objective(kprime) = -( log(A*k^α-kprime)+β*Vprime(kprime) ) #stores objective as function
+    k_max = min(A*k^α-.001,k_bounds[2]) #Can't have negative consumptions
+    result = optimize(f_objective,k_bounds[1],k_max)
+    return (kprime = result.minimizer,V=-result.minimum) #using named tuples 
+end;
+```
+
+## Computing the Bellman Map
+```julia
+"""
+    bellmanmap(Vprime,para::NCParameters)
+
+Apply the bellman map given continuation value function Vprime
+"""
+function bellmanmap(para::NCParameters,Vprime::Interpoland)
+    kbasis = Vprime.basis
+    #sometimes it's helpful to tell julia what type a variable is
+    knodes = nodes(kbasis)[1]::Vector{Float64}
+    V = map(k->optimalpolicy(para,Vprime,k).V,knodes)
+    return Interpoland(kbasis,V)
+end;
+```
+
+## Solving the Bellman Map
+```julia
+"""
+    solvebellman(para::NCParameters,V0::Interpoland)
+
+Solves the bellman equation for a given V0
+"""
+function solvebellman(para::NCParameters,V0::Interpoland)
+    diff = 1
+    #Iterate of Bellman Map until difference in coefficients goes to zero
+    while diff > 1e-6
+        V = bellmanmap(para,V0)
+        diff = norm(V.coefs-V0.coefs,Inf)
+        V0 = V
+    end
+    kbasis = V0.basis
+    knodes = nodes(kbasis)[1]::Vector{Float64}
+    #remember optimalpolicy also returns the argmax
+    kprime = map(k->optimalpolicy(para,V0,k).kprime,knodes)
+    #Now get policies
+    return Interpoland(kbasis,kprime),V0
+end;
+```
+
+## Solving the Model
+```julia
+"""
+    getV0(para::NCParameters)
+
+Initializes V0(k) = 0 using the kgrid of para
+"""
+function getV0(para::NCParameters)
+    @unpack kgrid,spline_order = para
+
+    kbasis = Basis(SplineParams(kgrid,0,spline_order))
+
+    return Interpoland(kbasis,k->0 .*k)
+end
+para = NCParameters()
+kprime,V = solvebellman(para,getV0(para));
+```
+
+## Compare to True Solution
+```julia fig_width=10; fig_height=5
+ktruth(para,k) = para.α.*para.β.*para.A.*k.^para.α
+kmin,kmax = para.kgrid[1],para.kgrid[end]
+plot(layer(k->ktruth(para,k),kmin,kmax,color=["Truth"]),
+     layer(k->kprime(k),kmin,kmax,color=["Approximation"]),
+     Guide.xlabel("Capital"), Guide.ylabel("Future Capital"),Guide.colorkey(title=""))
+```
+
+## Errors Relative to True Solution
+```julia fig_width=10; fig_height=5
+plot(k->kprime(k).-ktruth(para,k),kmin,kmax,Guide.xlabel("Capital"), Guide.ylabel("Future Capital Error"))
+```
+
+## Difference Between Order of Splines
+```julia fig_width=10; fig_height=5
+para.spline_order = 1
+kprime1,_ = solvebellman(para,getV0(para))
+para.spline_order = 2
+kprime2,_ = solvebellman(para,getV0(para))
+para.spline_order = 3
+kprime3,_ = solvebellman(para,getV0(para))
+
+plot(layer(k->ktruth(para,k),kmin,kmax,color=["Truth"]),
+     layer(k->kprime1(k),kmin,kmax,color=["Linear Spline"]),
+     layer(k->kprime2(k),kmin,kmax,color=["Quadratic Spline"]),
+     layer(k->kprime3(k),kmin,kmax,color=["Cubic Spline"]),
+     Guide.xlabel("Capital"), Guide.ylabel("Future Capital"),Guide.colorkey(title=""))
+```
+
+## Errors
+```julia fig_width=10; fig_height=5
+plot(layer(k->kprime1(k).-ktruth(para,k),kmin,kmax,color=["Linear Spline"]),
+     layer(k->kprime2(k).-ktruth(para,k),kmin,kmax,color=["Quadratic Spline"]),
+     layer(k->kprime3(k).-ktruth(para,k),kmin,kmax,color=["Cubic Spline"]),
+     Guide.xlabel("Capital"), Guide.ylabel("Future Capital"),Guide.colorkey(title=""))
+```
