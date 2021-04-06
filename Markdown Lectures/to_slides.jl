@@ -1,12 +1,12 @@
 using Weave
 import Cairo,Fontconfig
 
-name = "StochasticProcesses"
+name = "ValueFunctions"
 directory = name*"/"
 filename = directory * name *".jmd"
 weave(filename;fig_path="assets", doctype="pandoc")
 notebookname = directory * name *".ipynb"
-#NOTE:Need to run this 
+#NOTE:Need to run the ipython notebook by itself 
 convert_doc(filename,notebookname)
 #Weave.notebook(filename)
 #weave(filename;fig_path="assets", doctype="md2html")

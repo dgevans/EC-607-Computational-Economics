@@ -265,7 +265,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#285.mccallbellmanmap
+Main.##WeaveSandBox#276.mccallbellmanmap
 ~~~~
 
 
@@ -343,7 +343,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#285.solvemccall
+Main.##WeaveSandBox#276.solvemccall
 ~~~~
 
 
@@ -436,7 +436,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#285.RBCbellmanmap
+Main.##WeaveSandBox#276.RBCbellmanmap
 ~~~~
 
 
@@ -503,7 +503,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#285.RBCsolve_bellman
+Main.##WeaveSandBox#276.RBCsolve_bellman
 ~~~~
 
 
@@ -550,7 +550,7 @@ kgrid = LinRange(0.01,0.5,N)
 ~~~~~~~~~~~~~
 
 ~~~~
-0.009038 seconds (1.35 k allocations: 653.938 KiB)
+0.009325 seconds (1.35 k allocations: 653.938 KiB)
 ~~~~
 
 
@@ -564,7 +564,7 @@ kgrid = LinRange(0.01,0.5,N)
 ~~~~~~~~~~~~~
 
 ~~~~
-0.846427 seconds (1.35 k allocations: 5.356 MiB)
+0.832683 seconds (1.35 k allocations: 5.356 MiB)
 ~~~~
 
 
@@ -670,8 +670,8 @@ RBCsolve_bellman_howard(zeros(N),100,kgrid,A,α,β);
 ~~~~~~~~~~~~~
 
 ~~~~
-0.001951 seconds (551 allocations: 266.438 KiB)
-  0.010204 seconds (1.35 k allocations: 653.938 KiB)
+0.001944 seconds (551 allocations: 266.438 KiB)
+  0.009976 seconds (1.35 k allocations: 653.938 KiB)
 ~~~~
 
 
@@ -688,8 +688,8 @@ kgrid = LinRange(0.01,0.5,N)
 ~~~~~~~~~~~~~
 
 ~~~~
-0.058026 seconds (656 allocations: 2.599 MiB)
-  0.879244 seconds (1.35 k allocations: 5.356 MiB)
+0.056928 seconds (656 allocations: 2.599 MiB)
+  0.877100 seconds (1.35 k allocations: 5.356 MiB, 2.99% gc time)
 ~~~~
 
 

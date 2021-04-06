@@ -271,7 +271,7 @@ result = optimize(f_ros,zeros(2),SimulatedAnnealing(),Optim.Options(iterations=1
 * Status: failure (reached maximum number of iterations)
 
  * Candidate solution
-    Final objective value:     1.735767e-06
+    Final objective value:     1.465029e-06
 
  * Found with
     Algorithm:     Simulated Annealing
@@ -284,7 +284,7 @@ result = optimize(f_ros,zeros(2),SimulatedAnnealing(),Optim.Options(iterations=1
     |g(x)|                 = NaN ≰ 1.0e-08
 
  * Work counters
-    Seconds run:   2  (vs limit Inf)
+    Seconds run:   3  (vs limit Inf)
     Iterations:    10000000
     f(x) calls:    10000001
 ~~~~
@@ -298,8 +298,8 @@ println("Point that Acheives Minimum:$(result.minimizer)")
 ~~~~~~~~~~~~~
 
 ~~~~
-Value of Function at Minimum:1.7357671501174784e-6
-Point that Acheives Minimum:[1.000871800947326, 1.0016455828721054]
+Value of Function at Minimum:1.465028867063949e-6
+Point that Acheives Minimum:[0.9991335375478336, 0.9983523404483954]
 ~~~~
 
 
@@ -396,9 +396,9 @@ optimize(f_ros,zeros(2),BFGS())
 ~~~~~~~~~~~~~
 
 ~~~~
-0.000072 seconds (342 allocations: 9.406 KiB)
-  2.416770 seconds (20.00 M allocations: 305.177 MiB, 2.51% gc time)
-  0.000083 seconds (608 allocations: 25.984 KiB)
+0.000070 seconds (342 allocations: 9.406 KiB)
+  2.520912 seconds (20.00 M allocations: 305.177 MiB, 2.72% gc time)
+  0.000095 seconds (608 allocations: 25.984 KiB)
 ~~~~
 
 
@@ -588,7 +588,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#274.household_labor
+Main.##WeaveSandBox#269.household_labor
 ~~~~
 
 
@@ -617,7 +617,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#274.budget_residual
+Main.##WeaveSandBox#269.budget_residual
 ~~~~
 
 
@@ -648,7 +648,7 @@ end
 ~~~~~~~~~~~~~
 
 ~~~~
-Main.##WeaveSandBox#274.government_welfare
+Main.##WeaveSandBox#269.government_welfare
 ~~~~
 
 
@@ -688,12 +688,12 @@ Optim.optimize(τ->-government_welfare(τ,αvec,σ,γ),0.,0.8)
 Results of Optimization Algorithm
  * Algorithm: Brent's Method
  * Search Interval: [0.000000, 0.800000]
- * Minimizer: 5.232522e-01
- * Minimum: 1.330640e+00
- * Iterations: 17
+ * Minimizer: 5.109079e-01
+ * Minimum: 1.322740e+00
+ * Iterations: 12
  * Convergence: max(|x - x_upper|, |x - x_lower|) <= 2*(1.5e-08*|x|+2.2e-16
 ): true
- * Objective Function Calls: 18
+ * Objective Function Calls: 13
 ~~~~
 
 
