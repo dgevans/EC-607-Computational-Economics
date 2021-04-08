@@ -160,8 +160,8 @@ mean(X,2)
     R::Matrix{Float64} = [1.][:,:]
 
     #Initial Beliefs
-    x̂0::Vector{Float64} = [0.][:,:]
-    Σ0::Matrix{Float64} = [1.]
+    x̂0::Vector{Float64} = [0.]
+    Σ0::Matrix{Float64} = [1.][:,:]
 end
 
 """
