@@ -798,7 +798,40 @@ function equilibrium(dmp::DMPModel)
     S = length(dmp.z)
     return nlsolve(x->residuals(dmp,x),ones(S)).zero
 end
+
+θvec = equilibrium(model)
+println((model.P^500*θvec)[1]) #Almost 1 but not quite
 ```
+
+## Calibrating $\kappa$
+* Internally calibrating $\kappa$ can be done by adding an extra constraint
+```julia
+"""
+    calibrate_κ!(dmp::DMPModel)
+
+Internally calibrates κ to target an average θ of 1
+"""
+function calibrate_κ!(dmp::DMPModel)
+    θvec0 = equilibrium(dmp) #first find the equilibrium for a given κ
+    function res(κθvec)
+        κ,θvec = κθvec[1],κθvec[2:end]
+        dmp.κ = κ #note changing value form dmp
+        return [1-(dmp.P^500*θvec)[1]; #long run θ is 1
+                residuals(dmp,θvec)]#eqb residuals must be 0
+    end
+    κθvec0 = [dmp.κ;θvec] #
+
+    dmp.κ =  nlsolve(res,κθvec0).zero[1]
+
+    return equilibrium(dmp)
+end
+
+θvec = calibrate_κ!(model)
+println((model.P^500*θvec)[1])
+```
+
+## Check Equilibrium
+
 ## Equilibrium Dynamics
 * We've solved for the dynamics of $\theta_t = \theta(z_t)$
 

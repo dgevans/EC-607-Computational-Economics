@@ -264,9 +264,9 @@ with default values 0.99,0.212,0.72,0.4,0.05,0.72,0.83
 end
 
 """
-    DMPParameters(Nz,ρ_z,σ_z) 
+DMPModel(Nz,ρ_z,σ_z) 
 
-Constructs an instance of DMPParameters from model parameters
+Constructs an instance of DMPModel from model parameters
 """
 function DMPModel(Nz,ρ_z,σ_z)
     mc = rouwenhorst(Nz,ρ_z,σ_z)
@@ -308,8 +308,31 @@ function equilibrium(dmp::DMPModel)
     return nlsolve(x->residuals(dmp,x),ones(S)).zero
 end
 
+"""
+    calibrate_κ!(dmp::DMPModel)
+
+Internally calibrates κ to target an average θ of 1
+"""
+function calibrate_κ!(dmp::DMPModel)
+    θvec0 = equilibrium(dmp) #first find the equilibrium for a given κ
+    function res(κθvec)
+        κ,θvec = κθvec[1],κθvec[2:end]
+        dmp.κ = κ #note changing value form dmp
+        return [1-(dmp.P^500*θvec)[1]; #long run θ is 1
+                residuals(dmp,θvec)]#eqb residuals must be 0
+    end
+    κθvec0 = [dmp.κ;θvec] #
+
+    dmp.κ =  nlsolve(res,κθvec0).zero[1]
+
+    return equilibrium(dmp)
+end
+
 residuals(model,zeros(51))
-equilibrium(model)
+θvec = equilibrium(model)
+println(model.P^500*θvec)
+θvec = calibrate_κ!(model)
+println(model.P^500*θvec)
 
 function simulate_economy(dmp,initial_state,T)
     s1,u1 = initial_state
