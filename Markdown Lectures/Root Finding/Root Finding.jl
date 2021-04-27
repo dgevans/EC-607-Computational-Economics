@@ -335,10 +335,11 @@ println(model.P^500*θvec)
 println(model.P^500*θvec)
 
 function simulate_economy(dmp,initial_state,T)
+    @unpack δ,η,b,κ,δ = dmp
     s1,u1 = initial_state
     θvec = equilibrium(dmp)
     #preallocate space
-    u,v,y,z,θ = zeros(T+1),zeros(T),zeros(T),zeros(T),zeros(T)
+    u,v,y,z,θ,w = zeros(T+1),zeros(T),zeros(T),zeros(T),zeros(T),zeros(T)
     u[1] = u1
     s = simulate_indices(MarkovChain(model.P),T,init=s1)
     for t in 1:T
@@ -346,15 +347,16 @@ function simulate_economy(dmp,initial_state,T)
         z[t] = dmp.z[s[t]]
         y[t] = z[t]*(1-u[t])
         v[t] = θ[t]*u[t]
-        u[t+1] = u[t]+dmp.δ*(1-u[t])-p(dmp,θ[t])*u[t]
+        w[t] = η*z[t] + (1-η)*b + η*κ*θ[t]
+        u[t+1] = u[t]+δ*(1-u[t])-p(dmp,θ[t])*u[t]
     end
     #often convenient to return simulations as DataFrame
-    return DataFrame(u=u[1:T],v=v,y=y,θ=θ,z=z)
+    return DataFrame(u=u[1:T],v=v,y=y,θ=θ,z=z,w=w)
 end
 
 df = simulate_economy(model,(25,0.057),200)
 gridstack([plot(df,y=:u,Geom.line) plot(df,y=:v,Geom.line);
-           plot(df,y=:y,Geom.line) plot(df,y=:θ,Geom.line)] )
+           plot(df,y=:w,Geom.line) plot(df,y=:θ,Geom.line)] )
 
 
 function impulseResponse(dmp,u0,s0,s0′,T,N=100)
@@ -363,7 +365,8 @@ function impulseResponse(dmp,u0,s0,s0′,T,N=100)
     Random.seed!(4234345) #use the same random seed
     df_irf = simulate_economy(dmp,(s0,u0),T)
     for i in 2:N
-        df_irf .+= simulate_economy(dmp,(s0,u0),T)
+        dftemp = simulate_economy(dmp,(s0,u0),T)
+        df_irf .+= dftemp
     end
     df_irf ./= N 
 
@@ -380,7 +383,7 @@ function impulseResponse(dmp,u0,s0,s0′,T,N=100)
 end
 
 
-df_irf = impulseResponse(model,0.57,25,30,20)
+df_irf = impulseResponse(model,0.057,25,30,20)
 
 gridstack([plot(df_irf,y=:u,Geom.line) plot(df_irf,y=:v,Geom.line);
            plot(df_irf,y=:y,Geom.line) plot(df_irf,y=:θ,Geom.line)] )

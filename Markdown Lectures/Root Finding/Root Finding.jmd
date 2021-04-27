@@ -227,7 +227,7 @@ $$
 \begin{aligned}
     c_t^{-\sigma} &= \beta R_{t+1}c_{t+1}^{-\sigma}\\
     R_t &=\alpha A k_t^{\alpha -1} + 1 - \delta\\
-    c_t + k_{t+1} &= A k_t^\alpha -\delta k_t  
+    c_t + k_{t+1} &= A k_t^\alpha +(1-\delta) k_t  
 \end{aligned}
 $$
 * We know how to solve for the steady state of this problem
@@ -235,7 +235,7 @@ $$
 \begin{aligned}
     1&= \beta \bar R\\
     \bar R &=\alpha A \bar k^{\alpha -1} + 1 - \delta\\
-    \bar c + \bar k &= A \bar k^\alpha -\delta \bar k  
+    \bar c + \bar k &= A \bar k^\alpha +(1-\delta) \bar k  
 \end{aligned}
 $$
 * If $k_0 = \bar k$ then $k_t = \bar k$ for all $t$
@@ -669,12 +669,12 @@ $$
 
 * Moreover, free entry implies that for all $z$:
 $$
-    \frac{\kappa}{\beta q(\theta(z))} = \mathbb E\left[(1-\eta)(z'-b)+\eta \kappa \theta(z') + \frac{(1-\delta)\kappa}{q(\theta(z'))}\bigg| z\right]
+    \frac{\kappa}{\beta q(\theta(z))} = \mathbb E\left[(1-\eta)(z'-b)-\eta \kappa \theta(z') + \frac{(1-\delta)\kappa}{q(\theta(z'))}\bigg| z\right]
 $$ 
 
 * Or
 $$
-    \frac{\kappa}{\beta q(\theta(z_i))} = \sum_jP_{ij}\left[(1-\eta)(z_j-b)+\eta \kappa \theta(z_j) + \frac{(1-\delta)\kappa}{q(\theta(z_j))}\right]
+    \frac{\kappa}{\beta q(\theta(z_i))} = \sum_jP_{ij}\left[(1-\eta)(z_j-b)-\eta \kappa \theta(z_j) + \frac{(1-\delta)\kappa}{q(\theta(z_j))}\right]
 $$
 
 * This is a non-linear system of $S$ equations and $S$ unkowns.
@@ -706,7 +706,7 @@ $$
 
 * Observe
 $$
-    \frac{\kappa}{\beta q(\theta(z_i))} = \sum_jP_{ij}\left[(1-\eta)(z_j-b)+\eta \kappa \theta(z_j) + \frac{(1-\delta)\kappa}{q(\theta(z_j))}\right]
+    \frac{\kappa}{\beta q(\theta(z_i))} = \sum_jP_{ij}\left[(1-\eta)(z_j-b)-\eta \kappa \theta(z_j) + \frac{(1-\delta)\kappa}{q(\theta(z_j))}\right]
 $$
 
 * Can double $\kappa$ and multiply $A$ by $2^{1-\alpha}$ will result in a solution that
@@ -846,10 +846,11 @@ println((model.P^500*θvec)[1])
 ## Simulating 
 ```julia
 function simulate_economy(dmp,initial_state,T)
+    @unpack δ,η,b,κ,δ = dmp
     s1,u1 = initial_state
     θvec = equilibrium(dmp)
     #preallocate space
-    u,v,y,z,θ = zeros(T+1),zeros(T),zeros(T),zeros(T),zeros(T)
+    u,v,y,z,θ,w = zeros(T+1),zeros(T),zeros(T),zeros(T),zeros(T),zeros(T)
     u[1] = u1
     s = simulate_indices(MarkovChain(model.P),T,init=s1)
     for t in 1:T
@@ -857,10 +858,11 @@ function simulate_economy(dmp,initial_state,T)
         z[t] = dmp.z[s[t]]
         y[t] = z[t]*(1-u[t])
         v[t] = θ[t]*u[t]
-        u[t+1] = u[t]+dmp.δ*(1-u[t])-p(dmp,θ[t])*u[t]
+        w[t] = η*z[t] + (1-η)*b + η*κ*θ[t]
+        u[t+1] = u[t]+δ*(1-u[t])-p(dmp,θ[t])*u[t]
     end
     #often convenient to return simulations as DataFrame
-    return DataFrame(u=u[1:T],v=v,y=y,θ=θ,z=z)
+    return DataFrame(u=u[1:T],v=v,y=y,θ=θ,z=z,w=w)
 end
 ```
 
@@ -868,7 +870,7 @@ end
 ```julia fig_width=10; fig_height=5
 df_sim = simulate_economy(model,(25,0.057),200)
 title(gridstack([plot(df_sim,y=:u,Geom.line) plot(df_sim,y=:v,Geom.line);
-           plot(df_sim,y=:y,Geom.line) plot(df_sim,y=:θ,Geom.line)] ),
+           plot(df_sim,y=:w,Geom.line) plot(df_sim,y=:θ,Geom.line)] ),
            "Simulation Paths")
 ```
 What's wrong with this picture?
@@ -921,11 +923,11 @@ end
 ```
 
 ## Visualizing IRF
-```julia fig_width=10; fig_height=5
-df_irf = impulseResponse(model,0.57,25,30,20)
+```julia fig_width=15; fig_height=5
+df_irf = impulseResponse(model,0.057,25,20,  20)
 
-title(gridstack([plot(df_irf,y=:u,Geom.line) plot(df_irf,y=:v,Geom.line);
-           plot(df_irf,y=:y,Geom.line) plot(df_irf,y=:θ,Geom.line)] ),
+title(gridstack([plot(df_irf,y=:u,Geom.line) plot(df_irf,y=:v,Geom.line) plot(df_irf,y=:y,Geom.line);
+           plot(df_irf,y=:w,Geom.line) plot(df_irf,y=:θ,Geom.line) plot(df_irf,y=:z,Geom.line)] ),
            "Impulse Response Function")
 ```
 
