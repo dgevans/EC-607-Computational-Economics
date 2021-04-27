@@ -250,3 +250,27 @@ plot(layer(k->kprime1(k).-α.*β.*A.*k.^α,kmin,kmax,color=["Linear Spline"]),
      layer(k->kprime2(k).-α.*β.*A.*k.^α,kmin,kmax,color=["Quadratic Spline"]),
      layer(k->kprime3(k).-α.*β.*A.*k.^α,kmin,kmax,color=["Cubic Spline"]),
      Guide.xlabel("Capital"), Guide.ylabel("Future Capital"),Guide.colorkey(title=""))
+
+
+
+## Higher Order
+basis_x = SplineParams(LinRange(-1,1,5),0,3) #cubic splines along xgrid
+basis_y = ChebParams(3,-1,1)
+
+basis = Basis(basis_x,basis_y)
+
+X = nodes(basis)[1]
+f = x-> exp(-x[1]^2-x[2]^2)
+fvals = [f(X[i,:]) for i in 1:size(X,1)]
+
+f̂ = Interpoland(basis,fvals)
+
+#at a node
+plot(layer(x->f([x,0]),-1,1,color=["Function"]),
+     layer(x->f̂([x,0]),-1,1,color=["Approximation"]),
+     Guide.xlabel("x"),Guide.ylabel("f"))
+
+#away from a node
+plot(layer(x->f([x,0.5]),-1,1,color=["Function"]),
+     layer(x->f̂([x,0.5]),-1,1,color=["Approximation"]),
+     Guide.xlabel("x"),Guide.ylabel("f"))

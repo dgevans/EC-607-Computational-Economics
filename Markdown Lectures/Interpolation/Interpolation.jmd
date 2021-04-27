@@ -566,3 +566,143 @@ plot(layer(k->kprime1(k).-ktruth(para,k),kmin,kmax,color=["Linear Spline"]),
      layer(k->kprime3(k).-ktruth(para,k),kmin,kmax,color=["Cubic Spline"]),
      Guide.xlabel("Capital"), Guide.ylabel("Future Capital"),Guide.colorkey(title=""))
 ```
+
+# Higher Dimensional Interpolation
+## Higher Dimensional Interpolation
+*  Higher dimensional function can be approximated in the same manner
+$$
+    f(x) \approx \sum_i\phi_i(x)c_i
+$$
+
+* $\phi_i(x)$ are now functions mapping $\mathbb R^n\rightarrow \mathbb R$
+
+    * The basis functions for our interpolation
+
+* Question: How do we construct these basis functions?
+
+## 2 Dimensional Interpolation
+* Lets the task of approximating an 2-dimensional function $f(x,y)$ 
+    * On some bounded interval $I=[a_x,b_x]\times[a_y,b_y]$
+
+* Let $\phi^x_i$ and $\phi^y_j$ be basis functions over $[a_x,b_x]$ and $[a_y,b_y]$ respectively
+    * Assume $n_x$ basis functions for $x$ and $n_y$ for $y$
+
+*  A natural basis for functions on $I$ is constructed using products of the basis functions
+$$
+    \phi_{ij}(x,y)=\phi^x_i(x)\phi^y_j(y)
+$$
+    * These are called tensor product basis functions
+
+* We can similarly construct interpolation nodes from the nodes on $x$ and $y$
+    * Let $x_1,x_2,\ldots,x_{n_x}$ be the nodes on $[a_x,b_x]$
+    * Let $y_1,y_2,\ldots,y_{n_y}$ be the nodes on $[a_y,b_y]$
+    
+* Construct nodes on $I$ by taking the Cartesian product:
+$$
+    \left\{(x_i,y_j)|i=1,2,\ldots,n_x;j=1,2,\ldots,n_y\right\}
+$$
+
+* Example: basis functions with cubic on $x$ and quadratic on $y$
+$$
+1,x,y,xy,x^2,y^2,xy^2,x^2,y,x^2y^2,x^3,x^3y,x^3,y^2
+$$
+
+## Arbitrary dimensions
+*  Suppose we want to approximate $f(x_1,x_2,\ldots,x_d)$ 
+    * On $[a_1,b_1]\times[a_2,b_2]\times\ldots\times[a_d,b_d]$
+
+* Start with univariate basis functions: 
+    * let $\phi_{i,j}$ with $j=1,\ldots,n_i$ be the $j^{th}$ basis function along the $i^{th}$ dimension
+
+* We can approximate $f$ using the tensor product basis functions
+$$
+    \hat f(x_1,\ldots,x_d) = \sum_{j_1=1}^{n_1}\cdots\sum_{j_d=1}^{n_d}\phi_{1j_1}(x_1)\cdots\phi_{dj_d}(x_d)c_{j_1\ldots j_d}
+$$
+
+* This is a bit messy, can clear this up if we let $\phi_i(x_i)$ be the vector of basis functions
+    * Let $c$ be the vector of coefficients
+$$
+    \hat f(x_1,\ldots,x_d) = [\phi_d(x_d)\otimes\phi_{d-1}(x_{d-1})\otimes\ldots\otimes\phi_1(x_1)]c
+$$
+
+## Arbitrary dimensions (Cont)
+* This is a bit messy, can clear this up if we let $\phi_i(x_i)$ be the vector of basis functions
+    * Let $c$ be the vector of coefficients
+$$
+    \hat f(x_1,\ldots,x_d) = [\phi_d(x_d)\otimes\phi_{d-1}(x_{d-1})\otimes\ldots\otimes\phi_1(x_1)]c
+$$
+* What is $\otimes$???? If $A$ and $B$ are matrices we define
+$$
+  A\otimes B = \left[\begin{matrix}a_{11}B&\cdots&a_{1n}B\\ \vdots&\ddots&\vdots\\ a_{m1}B&\cdots&a_{mn}B\end{matrix}\right]
+$$
+
+* More compactly this defines
+$$
+\hat f(x) = \phi(x)c
+$$
+
+## Fitting Our Function
+* Often we'll want to evaluate $\hat f$ at a bunch of points $X$
+    * where $X$ is a $m\times d$ matrix
+
+*  Define $\Phi(X)$ as a $m\times n$ matrix
+    * The $i^{th}$ row is given by $\phi(X_i)$
+
+* $\hat f(X)$ is evaluated simply as 
+$$
+\Phi(X)c
+$$
+
+* Let $X$ be cartesian product of the nodes of the basis functions
+    * $X$ is $n\times d$
+
+* We can fit $f(X)$ by computing coefficients
+$$
+    c = \Phi(X)^{-1}f(X)
+$$
+
+## Implemeting Higher Order Interpolation
+```julia
+basis_x = SplineParams(LinRange(-1,1,5),0,3) #cubic splines along x
+basis_y = ChebParams(3,-1,1)#Chebyshev polynomials along y
+
+basis = Basis(basis_x,basis_y)
+```
+* Can easily get the nodes
+```julia
+X = nodes(basis)[1]
+```
+
+## Fitting the function
+```julia
+f2d = x-> exp(-x[1]^2-x[2]^2)
+#compute f at each node
+fvals = [f2d(X[i,:]) for i in 1:size(X,1)]
+```
+* Fitting the function is as easy as
+```julia
+f̂ = Interpoland(basis,fvals);
+```
+
+## Checking Fit
+* Hold $y$ fixed at one of the Chebyshev Nodes
+```julia fig_height=5;fig_width=10
+plot(layer(x->f2d([x,0]),-1,1,color=["Function"]),
+     layer(x->f̂([x,0]),-1,1,color=["Approximation"]),
+     Guide.xlabel("x"),Guide.ylabel("f"))
+```
+## Checking Fit
+* Hold $x$ fixed at 0
+```julia fig_height=5;fig_width=10
+plot(layer(y->f2d([0,y]),-1,1,color=["Function"]),
+     layer(y->f̂([0,y]),-1,1,color=["Approximation"]),
+     Guide.xlabel("y"),Guide.ylabel("f"))
+```
+
+## Checking Fit
+* Hold $y$ fixed away from one of the nodes
+```julia fig_height=5;fig_width=10
+plot(layer(x->f2d([x,0.5]),-1,1,color=["Function"]),
+     layer(x->f̂([x,0.5]),-1,1,color=["Approximation"]),
+     Guide.xlabel("x"),Guide.ylabel("f"))
+```
