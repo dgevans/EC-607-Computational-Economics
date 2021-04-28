@@ -94,7 +94,7 @@ function household_labor(α,τ,T,σ,γ)
     res(h) = (Ŵ*h+T)^(-σ)*Ŵ-h^γ
     min_h = max(0,(.0000001-T)/(1-τ)*exp(α)) #ensures c>.0001
     h = fzero(res,min_h,20000.) #find hours that solve HH problem
-    c = Ŵ+T
+    c = Ŵ*h+T
     U = c^(1-σ)/(1-σ)-h^(1+γ)/(1+γ)
     return c,h,U
 end
@@ -143,6 +143,35 @@ function government_welfare(τ,αvec,σ,γ)
     return welfare/N
 end
 
-Optim.optimize(τ->-government_welfare(τ,αvec,σ,γ),0.,0.8)
-
+@time minx_optim = Optim.optimize(τ->-government_welfare(τ,αvec,σ,γ),0.,0.8)
+println(minx_optim)
 plot(τ->government_welfare(τ,αvec,σ,γ),0.,0.8)
+
+
+## Using NLopt
+"""
+    government_welfare(τ,T,αvec,σ,γ)
+
+Solves for government welfare given tax rate τ
+"""
+function government_welfare(τ,T,αvec,σ,γ)
+    welfare = 0.
+    N = length(αvec)
+    for i in 1:N
+        #compute HH welfare given tax rate
+        c,h,U = household_labor(αvec[i],τ,T,σ,γ)
+        welfare += U #Aggregate welfare
+    end
+    return welfare/N
+end
+
+opt = Opt(:LN_COBYLA, 2)
+lower_bounds!(opt, [0., -1.])
+upper_bounds!(opt, [0.8,Inf])
+ftol_rel!(opt,1e-8)
+
+min_objective!(opt, (x,g)->-government_welfare(x[1],x[2],αvec,σ,γ))
+equality_constraint!(opt, (x,g) -> -budget_residual(x[1],x[2],αvec,σ,γ))
+
+@time (minf,minx_nlopt,ret) = NLopt.optimize(opt, [0.3, 0.3])
+println(minx_nlopt[1])
