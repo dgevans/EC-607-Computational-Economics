@@ -593,6 +593,12 @@ $$
 $$
     * These are called tensor product basis functions
 
+* Example: basis functions with cubic on $x$ and quadratic on $y$
+$$
+1,x,y,xy,x^2,y^2,xy^2,x^2,y,x^2y^2,x^3,x^3y,x^3,y^2
+$$
+
+## Interpolation Nodes - 2 Dimensions 
 * We can similarly construct interpolation nodes from the nodes on $x$ and $y$
     * Let $x_1,x_2,\ldots,x_{n_x}$ be the nodes on $[a_x,b_x]$
     * Let $y_1,y_2,\ldots,y_{n_y}$ be the nodes on $[a_y,b_y]$
@@ -602,10 +608,7 @@ $$
     \left\{(x_i,y_j)|i=1,2,\ldots,n_x;j=1,2,\ldots,n_y\right\}
 $$
 
-* Example: basis functions with cubic on $x$ and quadratic on $y$
-$$
-1,x,y,xy,x^2,y^2,xy^2,x^2,y,x^2y^2,x^3,x^3y,x^3,y^2
-$$
+
 
 ## Arbitrary dimensions
 *  Suppose we want to approximate $f(x_1,x_2,\ldots,x_d)$ 
@@ -706,3 +709,138 @@ plot(layer(x->f2d([x,0.5]),-1,1,color=["Function"]),
      layer(x->f̂([x,0.5]),-1,1,color=["Approximation"]),
      Guide.xlabel("x"),Guide.ylabel("f"))
 ```
+
+# Optimal Taxation Revisited
+## The Household Problem
+* Recall that our code spent the most time on the HH problem
+* Household first order condition
+$$
+    h^\gamma = c^{-\sigma} (1-\tau)\exp(\alpha)
+$$
+* Combine with budget constraint:
+$$
+    h^\gamma = \left((1-\tau)\exp(\alpha)h+T\right)^{-\sigma}(1-\tau)\exp(\alpha)
+$$
+* Note that $h$ (and hence $c$ and $U$) depends on two objects
+    * The after tax wage $\hat W = (1-\tau)\exp(\alpha)$
+    * Transfers $T$
+
+* Can we pre-store the functions $h$, $c$ and $U$ to speed up our code
+
+## Setting Up the Environment
+```julia
+using Roots
+using Distributions
+σ = 2. #Standard
+γ = 2. #Targets Frisch elasticity of 0.5
+σ_α = sqrt(0.147) #Taken from HSV
+N = 1000
+alphaDist = Normal(-σ_α^2/2,σ_α)
+αvec = rand(alphaDist,N);
+```
+
+## Interpolating the HH policy functions
+* Try using Chebyshev polynomials
+```julia
+"""
+    approximate_household_labor(NlŴ,NT,σ,γ)
+
+Approximates HH policies as a function of log after tax wage and transfers.
+"""
+function approximate_household_labor(NlŴ,NT,σ_α,σ,γ)
+    lŴbasis = ChebParams(NlŴ,-5*σ_α+log(1-.8),5*σ_α)
+    Tbasis = ChebParams(NT,0.,2.) #we know optimal tax will always be positive
+    basis = Basis(lŴbasis,Tbasis)
+    X = nodes(basis)[1]
+    N = size(X,1) #How many nodes are there?
+    c,h = zeros(N),zeros(N)
+    for i in 1:N 
+        Ŵ,T = exp(X[i,1]),X[i,2]
+        res(h) = (Ŵ*h+T)^(-σ)*Ŵ-h^γ
+        min_h = max(0,(.0000001-T)/Ŵ) #ensures c>.0001
+        h[i] = fzero(res,min_h,20000.) #find hours that solve HH problem
+        c[i] = Ŵ*h[i]+T
+    end
+    U = @. c^(1-σ)/(1-σ)-h^(1+γ)/(1+γ)
+    return Interpoland(basis,c),Interpoland(basis,h),Interpoland(basis,U)
+end;
+```
+
+## Government Welfare and Budget Constraint
+* Adjust Government budget constraint to us pre-stored functions
+```julia
+"""
+    budget_residual(τ,T,hf)
+
+Computes the residual of the HH budget constraint given policy (τ,T)
+"""
+function budget_residual(τ,T,αvec,hf)
+    N = length(αvec)
+    X = [αvec .+ log(1-τ)  T*ones(N)]
+    tax_income = sum(hf(X).*exp.(αvec).*τ)/N
+    return tax_income - T
+end;
+```
+* Same with objective function
+```julia
+"""
+    government_welfare(τ,T,αvec,σ,γ)
+
+Solves for government welfare given tax rate τ
+"""
+function government_welfare(τ,T,αvec,Uf)
+    X = [αvec .+ log(1-τ)  T*ones(N)]
+    return sum(Uf(X))/N
+end;
+```
+
+## Solving For Optimal Policy
+* Wrap NLopt in a function for ease of use
+```julia
+using NLopt
+""" 
+    find_optimal_policy(αvec,Uf,hf)
+
+Computes the optimal policy given policy fuctions hf and indirect utility Uf
+"""
+function find_optimal_policy(αvec,Uf,hf)
+    opt = Opt(:LN_COBYLA, 2)
+    lower_bounds!(opt, [0., 0.])
+    upper_bounds!(opt, [0.5,Inf])
+    ftol_rel!(opt,1e-8)
+
+    min_objective!(opt, (x,g)->-government_welfare(x[1],x[2],αvec,Uf))
+    equality_constraint!(opt, (x,g) -> -budget_residual(x[1],x[2],αvec,hf))
+
+    minf,minx,ret = NLopt.optimize(opt, [0.3, 0.3])
+    if ret == :FTOL_REACHED
+        return minx
+    end
+end;
+```
+
+## Let's try this out 
+```julia
+cf,hf,Uf = approximate_household_labor(10,10,σ_α,σ,γ)
+find_optimal_policy(αvec,Uf,hf)
+@time find_optimal_policy(αvec,Uf,hf)
+#Remember the old code took 2 seconds
+```
+
+## How Does the Policy Depend On the Degree of Approximation?
+```julia
+cf,hf,Uf = approximate_household_labor(5,5,σ_α,σ,γ)
+find_optimal_policy(αvec,Uf,hf)
+```
+```julia
+cf,hf,Uf = approximate_household_labor(10,10,σ_α,σ,γ)
+find_optimal_policy(αvec,Uf,hf)
+```
+```julia
+cf,hf,Uf = approximate_household_labor(20,20,σ_α,σ,γ)
+find_optimal_policy(αvec,Uf,hf)
+```
+* Big difference going from 5 degree to 10 degree
+    * But 10 to 20 degree only effects the 4th decimal place
+
+

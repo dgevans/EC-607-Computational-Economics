@@ -274,3 +274,92 @@ plot(layer(x->f([x,0]),-1,1,color=["Function"]),
 plot(layer(x->f([x,0.5]),-1,1,color=["Function"]),
      layer(x->f̂([x,0.5]),-1,1,color=["Approximation"]),
      Guide.xlabel("x"),Guide.ylabel("f"))
+
+
+## Speeding up our optimization problem
+
+# Recall
+using Roots
+using Distributions
+σ = 2. #Standard
+γ = 2. #Targets Frisch elasticity of 0.5
+σ_α = sqrt(0.147) #Taken from HSV
+N = 1000
+alphaDist = Normal(-σ_α^2/2,σ_α)
+αvec = rand(alphaDist,N);
+
+"""
+    approximate_household_labor(NlŴ,NT,σ,γ)
+
+Approximates HH policies as a function of log after tax wage and transfers.
+"""
+function approximate_household_labor(NlŴ,NT,σ_α,σ,γ)
+    lŴbasis = ChebParams(NlŴ,-5*σ_α+log(1-.8),5*σ_α)
+    Tbasis = ChebParams(NT,0.,2.) #we know optimal tax will always be positive
+    basis = Basis(lŴbasis,Tbasis)
+    X = nodes(basis)[1]
+    N = size(X,1) #How many nodes are there?
+    c,h = zeros(N),zeros(N)
+    for i in 1:N 
+        Ŵ,T = exp(X[i,1]),X[i,2]
+        res(h) = (Ŵ*h+T)^(-σ)*Ŵ-h^γ
+        min_h = max(0,(.0000001-T)/Ŵ) #ensures c>.0001
+        h[i] = fzero(res,min_h,20000.) #find hours that solve HH problem
+        c[i] = Ŵ*h[i]+T
+    end
+    U = @. c^(1-σ)/(1-σ)-h^(1+γ)/(1+γ)
+    return Interpoland(basis,c),Interpoland(basis,h),Interpoland(basis,U)
+end
+
+
+
+"""
+    budget_residual(τ,T,hf)
+
+Computes the residual of the HH budget constraint given policy (τ,T)
+"""
+function budget_residual(τ,T,αvec,hf)
+    N = length(αvec)
+    X = [αvec .+ log(1-τ)  T*ones(N)]
+    tax_income = sum(hf(X).*exp.(αvec).*τ)/N
+    return tax_income - T
+end
+
+
+"""
+    government_welfare(τ,T,αvec,σ,γ)
+
+Solves for government welfare given tax rate τ
+"""
+function government_welfare(τ,T,αvec,Uf)
+    X = [αvec .+ log(1-τ)  T*ones(N)]
+    return sum(Uf(X))/N
+end
+
+
+#now do optimization
+using NLopt
+
+""" 
+    find_optimal_policy(αvec,Uf,hf)
+
+Computes the optimal policy given policy fuctions hf and indirect utility Uf
+"""
+function find_optimal_policy(αvec,Uf,hf)
+    opt = Opt(:LN_COBYLA, 2)
+    lower_bounds!(opt, [0., 0.])
+    upper_bounds!(opt, [0.5,Inf])
+    ftol_rel!(opt,1e-8)
+
+    min_objective!(opt, (x,g)->-government_welfare(x[1],x[2],αvec,Uf))
+    equality_constraint!(opt, (x,g) -> -budget_residual(x[1],x[2],αvec,hf))
+
+    minf,minx,ret = NLopt.optimize(opt, [0.3, 0.3])
+    if ret == :FTOL_REACHED
+        return minx
+    end
+end
+
+
+cf,hf,Uf = approximate_household_labor(10,10,σ_α,σ,γ)
+find_optimal_policy(αvec,Uf,hf)
