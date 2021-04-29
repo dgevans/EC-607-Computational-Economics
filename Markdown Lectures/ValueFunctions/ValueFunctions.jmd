@@ -438,6 +438,36 @@ plot(layer1,layer2,Guide.colorkey(title=""),
     Guide.XLabel("Capital"),Guide.YLabel("Capital Next Period"))
 ```
 
+## Path of Capital
+* One object we will be interested in computing is the path of capital over time
+    * Given some initial $k_0$
+
+```julia
+"""
+    simulate_k(n_0,T,n_pol,kgrid)
+
+Simulates the path of capital given policy rule n_pol and 
+initial capital state kgrid[n_0] for T periods
+"""
+function simulate_k(n_0,T,n_pol,kgrid)
+    k = zeros(T+1) # capital stock
+    n = zeros(Int,T+1) #index of the capital stock
+    n[1] = n_0
+    k[1] = kgrid[n_0]
+    for t in 1:T
+        n[t+1] = n_pol[n[t]] #get the policy rule for the index
+        k[t+1] = kgrid[n[t+1]]
+    end
+
+    return k
+end
+```
+
+## Path of Capital
+```julia fig_width=15;fig_height=5
+plot(y=simulate_k(1,25,n_pol,kgrid),Guide.xlabel("Time"),Guide.ylabel("Capital Stock"))
+```
+
 # Howard Imporvement Algorithm
 ## Speed of Value Function Iteration
 
@@ -693,4 +723,38 @@ for s in 1:2
 end
 plot(layers...,Guide.manual_color_key("",["Analytical","Discrete"],["red","blue"]),
 Guide.XLabel("Capital"),Guide.YLabel("Capital Next Period"))
+```
+
+
+## Path of Capital
+* One object we will be interested in computing is the path of capital over time
+    * Given some initial $k_0$ and $s_0$
+    * Will be stochastic
+
+```julia
+using QuantEcon
+"""
+    simulate_k_stochastic(n_0,T,n_pol,kgrid,Π)
+
+Simulates the path of capital given policy rule n_pol and 
+initial capital state kgrid[n_0] and aggregate state s_0 for T periods
+"""
+function simulate_k_stochastic(n_0,s0,T,n_pol,kgrid,Π)
+    k = zeros(T+1) # capital stock
+    n = zeros(Int,T+1) #index of the capital stock
+    s = simulate_indices(MarkovChain(Π),T;init=s0)
+    n[1] = n_0
+    k[1] = kgrid[n_0]
+    for t in 1:T
+        n[t+1] = n_pol[s[t],n[t]] #get the policy rule for the index
+        k[t+1] = kgrid[n[t+1]]
+    end
+
+    return k
+end
+```
+
+## Path of Capital
+```julia fig_width=15;fig_height=5
+plot(y=simulate_k_stochastic(1,1,25,n_pol,kgrid,Π),Guide.xlabel("Time"),Guide.ylabel("Capital Stock"))
 ```

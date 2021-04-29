@@ -1,7 +1,7 @@
 using Weave
 import Cairo,Fontconfig
 
-name = "ValueFunctions"
+name = "Interpolation"
 directory = name*"/"
 filename = directory * name *".jmd"
 weave(filename;fig_path="assets", doctype="pandoc")
