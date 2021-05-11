@@ -33,7 +33,7 @@ D_{i,t}=a_{i,t}^{\gamma-1}\left(P_{i,t}\right)^{-\gamma}.
  	\begin{equation}
  		\max_{\mu_{i,t}}\bar W^{1-\gamma}\sum_{t=0}^\infty \beta^t\left([\mu_{i,t}-1]\mu_{i,t}^{-\gamma}-\kappa1_{\mu_{i,t}\neq \frac{\mu_{i,t-1}}{\exp(\epsilon_{i,t})}}\right)
  	\end{equation}given $\mu_{i,-1}$
- 	\item  Let $V(\mu\_)$ be the value of a firm entering with markup $\mu\_$, after it's current quality shock $\epsilon$ is realized,  which chooses not to change prices this period.  Let $W$ be the value of a firm which elects to change prices this period (why doesn't this depend on $\mu\_$?).  Write down the Bellman equation(s) of the firm.
+ 	\item  Let $V(\mu)$ be the value of a firm entering with markup $\mu$ (this is after it's current quality shock $\epsilon$ is realized so $\mu=\frac{\mu\_}{\exp(\epsilon_i)}$ where $\mu\_$ is last period's markup) which chooses not to change prices this period.  Let $W$ be the value of a firm which elects to change prices this period (why doesn't this depend on $\mu$?).  Write down the Bellman equation(s) of the firm.
  	\item  Let $\beta=0.9981$ (targeting a monthly discount factor), $\gamma =3$, $\kappa =0.01$ and $\sigma_\epsilon = 0.1$.  Write a program to solve the problem of the firm. (Use Gauss-Hermite quadrature to compute the expectation over $\epsilon_i$)
  	\item  When do firms change their prices? (You should find that firms change their prices once markups are outside of a certain range of the optimal markup)
  	\item  Write a program to simulate $100,000$ firms to compute an ergodic distribution of firm markups.  Adjust $\kappa$ and $\sigma_\epsilon$ so that in the ergodic distribution 21.9\% of firms change their price every month and the average size of price changes is $0.095$. Compute the average markup
