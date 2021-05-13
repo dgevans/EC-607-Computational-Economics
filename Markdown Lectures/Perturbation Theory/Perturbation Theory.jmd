@@ -229,7 +229,7 @@ $$
 * How does this change the problem?
 
 ## Certainty Equivilance
-*  We'll guess that the value function takes the form $v(x)= -x'Px - d
+*  We'll guess that the value function takes the form $v(x)= -x'Px - d$
 
 * Pluging into the Bellman equation we get
 $$
@@ -1022,10 +1022,162 @@ function linearize_sequence(model,F,x̄,ȳ,ε̄,T=100)
 end;
 ```
 
-## Comparing IRFS
+## Comparing IRFS T = 100
 ```julia fig_height=5;fig_width=15
-df = compute_irf_RBC(model,100)
+df_irf = compute_irf_RBC(model,100)
 w = linearize_sequence(model,F_RBC,x̄,ȳ,ε̄)
+plot(layer(df_irf,y=:c,color=["Standard Linearization"]),
+     layer(y=w[3,:]*model.σ_ε,color=["Sequence Linearization"]))
+```
+
+## Comparing IRFS T = 25
+```julia fig_height=5;fig_width=15
+df = compute_irf_RBC(model,25)
+w = linearize_sequence(model,F_RBC,x̄,ȳ,ε̄,25)
 plot(layer(df,y=:c,color=["Standard Linearization"]),
      layer(y=w[3,:]*model.σ_ε,color=["Sequence Linearization"]))
+```
+
+## Simulation 
+* Straightforward to simulate using sequence space solution:
+    * Have computed $\bar x_{\varepsilon,t}$ and $\bar y_{\varepsilon,t}$
+    * Response of $x$ and $y$ to a shock t periods in the past
+
+* Given a sequence of shocks $\varepsilon_t$ first order path of $\hat y_t$ given by
+$$
+    \hat y_t = \sum_{j=0}^T \bar x_{\varepsilon,j}\varepsilon_{t-j}
+$$
+
+* Equivalent approach: 
+    * Start with $\hat y_t =0$ for all $t$
+    * For $t= 1,\ldots$ add up impulse responses
+    $$
+        \hat y_{t+j} = \hat y_{t+j} + \sum_{j=0}^T \bar y_{\varepsilon,j}\varepsilon_t
+    $$
+
+## Implementing Simulation
+```julia
+"""
+    simulate_RBC_sequence(model,T)
+
+Simulates the path of endogeneous variables for T periods, using
+sequence linearization method
+"""
+function simulate_RBC_sequence(model,T,Tlin)
+    @unpack σ_ε = model
+    x̄,ȳ,ε̄ = compute_steadystate(model)
+    w_ε = linearize_sequence(model,F_RBC,x̄,ȳ,ε̄,Tlin+1)
+    nx = length(x̄)
+    ny = length(ȳ)
+    x_ε = w_ε[1:nx,:]
+    y_ε = w_ε[nx+1:end,:]
+    x = zeros(nx,T+Tlin+1)
+    y = zeros(ny,T+Tlin)
+    ε = randn(T)
+    for t in 1:T
+        y[:,t:t+Tlin] += y_ε*σ_ε*ε[t]
+        x[:,t+1:t+Tlin+1] += x_ε*σ_ε*ε[t]
+    end
+
+    return DataFrame(c=y[1,1:T],R=y[2,1:T],a_=x[1,1:T],k_=x[2,1:T],ε=ε)
+end;
+```
+## Stochastic Properties
+```julia fig_width = 15;fig_height=5
+using Random
+Random.seed!(21323)
+df = simulate_RBC(model,200)
+Random.seed!(21323)
+df2 = simulate_RBC_sequence(model,200,100)
+
+#Compare w/ same random seed
+plot(layer(df,y=:c,color=["Linearization"]),layer(df2,y=:c,color=["Seqence Linearization"]))
+```
+
+# Dynare
+
+## Higer Order and More
+* Dynare is an incredibly useful toolkit for macoeconomics
+
+* Primarily analysis is done through perturbation theory:
+    * First order approximations
+    * Second order approximations
+    * etc.
+
+* Written to be easy to modeler
+    * just input your sytem of equations and go
+
+* Once policy rules are computed can perform simulation and estimation as well
+
+
+## The MOD File
+* Building block of dynare is the .mod file
+    * Allows you to specify your model and procedures you want to run
+
+* I'll break break down our mod file into parameters
+    * Dynare uses matlab so we'll call it through the MATLAB.jl package (need to install matlab)
+
+## Declare Variables
+```
+var c k z r;
+varexo e;
+parameters bet del alp sig rho s;
+bet = 0.96;
+del = 0.1;
+alp = 0.3;
+sig = 2;
+rho = 0.85;
+s = 0.015;
+```
+* Note the semicolons
+
+## Setup The Model
+```
+model;
+(c)^(-sig)=bet*(c(+1)^(-sig)*r(+1));
+k=exp(z)*k(-1)^alp-c+(1-del)*k(-1);
+r = 1+alp*exp(z)*k(-1)^(alp-1)-del;
+z = rho*z(-1)+s*e;
+end;
+
+shocks;
+var e;
+stderr 1;
+end;
+```
+* Note (+1) means one period ahead
+* (-1) denotes predetermined variables
+
+## Describe What You Want To Do
+```
+initval;
+k = 1;
+c = 1;
+z = 0;
+e = 0;
+end;
+
+steady;
+
+stoch_simul(order = 2, periods=1000);
+```
+* initval given the initial conditions for steady state
+* can write your own code to find steady state
+
+## Running the MOD File
+```julia
+using MATLAB
+mat"cd 'Perturbation Theory'" #Mod file has to be in current directory
+mat"dynare RBC.mod" #As easy as that
+```
+
+## Compare To Our Linearization
+* Can get variables from matlab `c_e` holds impulse response of consumption
+```julia
+c_dyn = @mget c_e;
+```
+* Compare IRF to our linearization
+```julia fig_width = 15;fig_height=5
+#Compare w/ same random seed
+plot(layer(df_irf,y=:c,color=["Linearization"]),layer(y=c_dyn,color=["Dynare"]))
 ```
