@@ -31,7 +31,7 @@ end
 function checkdeterminacy(para::NKParameters)
     A = constructA(para)
     F = schur(A)
-    return sum(norm.(F.values).>1)==2
+    return sum(norm.(F.values).>1)
 end
 
 function findpolicy(para::NKParameters)
@@ -52,6 +52,6 @@ checkdeterminacy(para)
 findpolicy(para)
 
 
-para.ϕ_π = 0.
-checkstability(para)
+para.ϕ_π = 1.01
+checkdeterminacy(para)
 
