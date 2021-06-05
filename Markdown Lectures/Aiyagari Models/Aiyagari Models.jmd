@@ -463,27 +463,33 @@ $$and $a'\geq \underline a$.
 * Can be done using endogenous grid method
 
 ## Endogneous grid method again
-* Let $\bar a'_j$ be a grid on $a'$
+* Let $\bar a'_i$ be a grid on $a'$
 
 * If the agent is not borrowing constrained then optimal consumption satisfies
 $$
-U'(\bar c_{j,s}) = \beta \sum_{s'}\Pi(s'|s)\sum_{j}\varphi_j\phi_j'(\bar a'_j,s')
+U'(\bar c_{i,s}) = \beta \sum_{s'}\Pi(s'|s)\sum_{j}\varphi_j\phi_j'(\bar a'_i,s')
 $$
 
-* Even better can precompute $\Pi(s'|s)\phi_j'(\bar a'_j,s')$ and store it in a matrix $E\Phi'$ so that
+* Even better can precompute $\Pi(s'|s)\phi_j'(\bar a'_i,s')$ and store it in a matrix $E\Phi'$ so that
 $$
     U'(\bar c) =\beta E\Phi'\varphi
 $$
 
-* Once $\bar c_{j,s}$ is computed we can compute $\bar a_{j,s}$ that satisfies
+* Once $\bar c_{i,s}$ is computed we can compute $\bar a_{i,s}$ that satisfies
 $$
-    (1+\bar r) \bar a_{j,s} = \bar c_{j,s} +\bar a_{j}' - \bar w \epsilon_s
+    (1+\bar r) \bar a_{i,s} = \bar c_{i,s} +\bar a_{i}' - \bar w \epsilon_s
 $$
 
 * Interpolate to apply endogenous grid algorith
     * carefule to include borrowing constraint
 
 ## Computing E$\Phi'$
+* $E\Phi$ is simplified if we have the same $N_a$ ($N=N_a\times S$) basis functions for each $s$: $\hat\phi_j(a)$
+    * Only first $N_a$ basis functions will be non-zero for $s=1$
+    * $j=N_a+1$ to $N_a$ basis functions will be non-zero for $s=2$
+    * and so on
+    * $\phi_j(a,s) = 1_{\lceil j/N_a\rceil+1 = s}\hat\phi_{mod(j-1,Na)+1}(\hat a)$
+
 ```julia
 
 """
@@ -518,7 +524,7 @@ function setupgrids_shocks!(HH::HHModel, curv=1.7)
     #Expectations of 1st derivative of Basis functions
     HH.EΦ′ = kron(Π,BasisMatrix(abasis,Direct(),nodes(abasis)[1],[1]).vals[1])
     HH.Φ = kron(Matrix{Float64}(I,Nϵ,Nϵ),BasisMatrix(abasis,Direct()).vals[1])
-end
+end;
 ```
 ## Applying Endogneous Grid
 ```julia
@@ -551,11 +557,11 @@ end;
 ## Collocation Method
 * Trick for applying collocation method is computing matrix
 $$
-    E\Phi_{i,j} = \sum_{s'}\Pi(s'|s_i)\sum_{j}\varphi_j\phi_j(a'(\bar a_i,s_;\varphi),s')
+    E\Phi_{i,j} = \sum_{s'}\Pi(s'|s_i)\sum_{j}\phi_j(a'(\bar a_i,s_i;\varphi),s')
 $$
 and
 $$
-    \bar U_i = U(c(\bar a_i,s_;\varphi))
+    \bar U_i = U(c(\bar a_i,s_i;\varphi))
 $$
 
 * Once this is computed then $F(\varphi)$ can be written as a linear equation
@@ -570,11 +576,6 @@ DF(\varphi) = \Phi -\beta E\Phi
 $$
 
 ## Iterating Using Collocation
-* $E\Phi$ is simplified if we have the same $N_a$ ($N=N_a\times S$) basis functions for each $s$
-    * Only first $N_a$ basis functions will be non-zero for $s=1$
-    * $j=N_a+1$ to $N_a$ basis functions will be non-zero for $s=2$
-    * and so on
-
 ```julia
 
 """

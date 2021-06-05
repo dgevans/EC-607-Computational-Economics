@@ -1,4 +1,4 @@
-# Assignment 1
+# Assignment 2
 I'll start by including some of the libraries I'll be needing throughout this
 ```julia
 using Roots,QuantEcon,NLsolve,Parameters,Gadfly,DataFrames,LinearAlgebra,Cairo,Fontconfig #Need these last two for Gadfly to produce png
