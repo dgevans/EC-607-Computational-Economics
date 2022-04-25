@@ -1,0 +1,35 @@
+% !TEX TS-program = xelatex
+\documentclass{exam}
+
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+\firstpageheader{Econ 607 - Computational}{Assignment 2}{Page \thepage\ of \numpages}
+\firstpageheadrule
+
+\begin{document}
+Consider the following of the stochastic growth model with capital adjustment costs, in its social planner version:
+\[
+	V(a,k) = \max_{c,n,i,k'} \log(c)- \chi \frac{n^{1+\gamma}}{1+\gamma}+\beta\mathbb E[V(a',k')]
+\]subject to
+\begin{align*}
+	c + i + \phi(\frac{i}{k} -\delta)^2k &= \exp(a) k^\alpha n^{1-\alpha}\\
+	k' &= (1-\delta)k + i
+\end{align*}
+where $k$ is capital 
+\begin{enumerate}
+ 	\item Begin by assuming that $a=0$ is deterministic and $\phi=0$.  The model then has the following parameters $\{\beta,\chi,\alpha,\delta\}$.  Set $\beta = 0.99$ (to target a quarterly frequency).  Set $\gamma=2$ to match a Frisch elasticity of $1/2$. Solve for the steady state of this model and calibrate the model to match (i) average hours worked $n^* = 0.3$; (ii) capital share of income of 0.3; (iii) an investment to output ratio of $i^*/y^*=0.16$.
+ 	\item Write a program to solve for the perfect foresight transition path $\{k_t\}_{t=0}^\infty$.
+ 	\item Choose a grid over capital and write a program to solve for the optimal policies in the non-stochastic environment using Value Function Iteration.  Check that the steady state of your approximated policy rules corresponds to  the steady state you computed in 1. and the path you computed in step 2. (You may need to have quite a fine grid)
+ 	\item  Solve for the policy rules assuming $\phi=10$ (repeat steps 2 and 3).  How do the policy rules differ.  What's the intuition.    
+ 	\item  Now introduce uncertainty.  Download the ``logtfp\_detrended.csv''\footnote{I used the TFP series from \url{http://www.frbsf.org/economic-research/indicators-data/total-factor-productivity-tfp/} which was then logged and detrended with an hp filter (this is somewhat questionable) with scale parameter 1600.} from canvas.  Estimate the following process for $a_t$:
+ 	\[
+ 		a_t = \rho a_{t-1} +\sigma \epsilon_t
+ 	\]with $\epsilon_t$ standard normal.  Approximate the AR(1) process using the Rouwenhorst method with $N=11$ grid points.\footnote{The QuantEcon package has a built in function to do this.}
+ 	\item  Solve for the optimal policy rules using dynamic programming when $\phi=0$.  Start from the steady state and simulate for 10,000 a timeseries for output, consumption, investment and hours worked.  Drop the first 3,000 realizations.  On the remaining 7,000 compute the standard deviations, autocorrelations, and cross-corellations for all of these variables.
+ 	\item  Repeat 6. when $\phi=10$.  Is there a difference?  Why or why not?
+ \end{enumerate} 
+\end{document} 
