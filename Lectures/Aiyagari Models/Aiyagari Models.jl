@@ -169,7 +169,7 @@ end;
 Solves the HH problem using the endogeneous grid method
 """
 function solveHHproblem_eg!(HH,verbose=false)
-    a′grid = nodes(HH.cf[1].basis)[1]#Get nodes for interpolation
+    a′grid = nodes(HH.Vf[1].basis)[1]#Get nodes for interpolation
     
     cf′ = iterate_endogenousgrid(HH,a′grid,HH.cf)
     diff = 1.
@@ -208,6 +208,14 @@ function ee_errors(HH,agrid)
     df.a = agrid
     return df,maximum(EE)
 end;
+
+HH.Na = 100
+setupgrids_shocks!(HH)
+solveHHproblem_eg!(HH)
+agrid = LinRange(HH.a̲,HH.a̅,1000)
+df_ee,EEmax = ee_errors(HH,agrid)
+println(EEmax)
+@df df_ee plot(:a,cols(1:HH.Nϵ),label=["ϵ_$s" for i in 1:1,s in 1:HH.Nϵ],legend=true)
 
 HH.Na = 100
 setupgrids_shocks!(HH,3.)
@@ -287,7 +295,8 @@ Updates the coefficients of the value function using newton's method
 function iteratebellman_newton!(HH::HHModel)
     @unpack β,ϵ,Π,r̄,w̄,Nϵ,Vf,Φ = HH
     Vcoefs = vcat([Vf[s].coefs for s in 1:Nϵ]...)::Vector{Float64}
-    agrid = nodes(Vf[1].basis)[1]
+    basis = Vf[1].basis
+    agrid = nodes(basis)[1]
     Na = length(agrid)
 
     cf = computeoptimalconsumption(HH,Vcoefs) #Compute optimal consumption function
@@ -298,7 +307,7 @@ function iteratebellman_newton!(HH::HHModel)
             c[(s-1)*Na+1:s*Na] = cf[s](agrid) #compute consumption at gridpoints
             a′ = (1+r̄)*agrid .+ ϵ[s]*w̄ .- c[(s-1)*Na+1:s*Na] #asset choice
             #Compute expectation of basis functions at a′
-            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*BasisMatrix(Vf[s].basis,Direct(),a′).vals[1][:]
+            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*BasisMatrix(basis,Direct(),a′).vals[1][:]
         end
     end
 
@@ -471,7 +480,7 @@ Rgrid = LinRange(1.,1.007,10)
 KSKD = hcat([capital_supply_demand(AM,R) for R in Rgrid]...)
 plot(Rgrid,KSKD[1,:],label="Capital Supplied",legend=true)
 plot!(Rgrid,KSKD[2,:],label="Capital Demanded",
-     ylabel="Gross Interest Rate",xlabel="Capital")
+     ylabel="Capital",xlabel="Gross Interest Rate")
 
 AM.R̄ = 1.01 #target a quarterly interest rate of 1%
 function calibratesteadystate!(AM)
