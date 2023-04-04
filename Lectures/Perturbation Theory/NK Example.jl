@@ -52,6 +52,6 @@ checkdeterminacy(para)
 findpolicy(para)
 
 
-para.ϕ_π = 1.01
+para.ϕ_π = 1.001
 checkdeterminacy(para)
 

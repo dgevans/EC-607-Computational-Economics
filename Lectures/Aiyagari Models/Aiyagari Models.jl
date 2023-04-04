@@ -303,11 +303,12 @@ function iteratebellman_newton!(HH::HHModel)
     c = zeros(Na*Nϵ) 
     EΦ = spzeros(Na*Nϵ,Na*Nϵ)
     for s in 1:Nϵ
+        c[(s-1)*Na+1:s*Na] = cf[s](agrid) #compute consumption at gridpoints
+        a′ = (1+r̄)*agrid .+ ϵ[s]*w̄ .- c[(s-1)*Na+1:s*Na] #asset choice
+        Φ̂  = BasisMatrix(basis,Direct(),a′).vals[1][:]
         for s′ in 1:Nϵ
-            c[(s-1)*Na+1:s*Na] = cf[s](agrid) #compute consumption at gridpoints
-            a′ = (1+r̄)*agrid .+ ϵ[s]*w̄ .- c[(s-1)*Na+1:s*Na] #asset choice
             #Compute expectation of basis functions at a′
-            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*BasisMatrix(basis,Direct(),a′).vals[1][:]
+            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*Φ̂
         end
     end
 
@@ -329,6 +330,7 @@ Updates the coefficients of the value function using time iteration of the bellm
 function iteratebellman_time!(HH::HHModel)
     @unpack β,ϵ,Π,r̄,w̄,Nϵ,Vf,Φ = HH
     Vcoefs = vcat([Vf[s].coefs for s in 1:Nϵ]...)::Vector{Float64}
+    basis = Vf[1].basis
     agrid = nodes(Vf[1].basis)[1]
     Na = length(agrid)
 
@@ -336,11 +338,12 @@ function iteratebellman_time!(HH::HHModel)
     c = zeros(Na*Nϵ) 
     EΦ = spzeros(Na*Nϵ,Na*Nϵ)
     for s in 1:Nϵ
+        c[(s-1)*Na+1:s*Na] = cf[s](agrid) #compute consumption at gridpoints
+        a′ = (1+r̄)*agrid .+ ϵ[s]*w̄ .- c[(s-1)*Na+1:s*Na] #asset choice
+        Φ̂  = BasisMatrix(basis,Direct(),a′).vals[1][:]
         for s′ in 1:Nϵ
-            c[(s-1)*Na+1:s*Na] = cf[s](agrid) #compute consumption at gridpoints
-            a′ = (1+r̄)*agrid .+ ϵ[s]*w̄ .- c[(s-1)*Na+1:s*Na] #asset choice
             #Compute expectation of basis functions at a′
-            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*BasisMatrix(Vf[s].basis,Direct(),a′).vals[1][:]
+            EΦ[(s-1)*Na+1:s*Na,(s′-1)*Na+1:s′*Na] = Π[s,s′]*Φ̂
         end
     end
 

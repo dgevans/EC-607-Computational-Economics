@@ -388,7 +388,7 @@ function RBCsolve_bellman_stochastic(V0,kgrid,A,Π,α,β,ϵ=1e-6)
     return V,n_pol,k_pol
 end;
 
-N = 50
+N = 500
 kgrid = LinRange(0.01,0.5,N)
 V,n_pol,k_pol = RBCsolve_bellman_stochastic(zeros(2,N),kgrid,A,Π,α,β);
 

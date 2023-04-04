@@ -1,0 +1,11 @@
+*.html
+*.png
+*.jmd
+*.m
+*.md
+*.log
+*.mat
+*.eps
+*checkpoint.ipynb
+checksum
+*DS_Store
