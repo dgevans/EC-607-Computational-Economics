@@ -1,6 +1,6 @@
 using Weave,NBInclude
 
-name = "Aiyagari Models"
+name = "StochasticProcesses"
 directory = name*"/"
 filename = directory * name *".jmd"
 filename_jl = directory * name *".jl"

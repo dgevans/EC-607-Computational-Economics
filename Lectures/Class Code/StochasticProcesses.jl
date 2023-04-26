@@ -6,7 +6,7 @@ rand(2,2)
 
 flip = rand() < 0.5
 
-flips = zeros(100) #Where to store the flips
+flips = zeros(Bool,100) #Where to store the flips
 r = rand(100) #A vector of 100 uniform random numbers on [0,1]
 for i in 1:100
     flips[i] = r[i] < 0.5 #check to see if the i th flip is heads
@@ -25,12 +25,14 @@ function flipNcoins(N,p=0.5)
     return rand(N) .< p
 end
 
+flipNcoins()
+
 println(flipNcoins(15))
 
 println(flipNcoins(15,1.))
 
 using Distributions
-dist  = LogNormal(0,1)
+dist  = LogNormal(0,2)
 
 println(mean(dist))
 println(std(dist))
@@ -56,7 +58,19 @@ toss_range = 5:1000
 meantosses = [mean(flipNcoins(N,0.5)) for N in toss_range]; #This is called a list compression
 stdtosses = [std(flipNcoins(N,0.5)) for N in toss_range]; #This is called a list compression
 plot(toss_range,meantosses,layout = (2,1),subplot=1,ylabel="Average # Heads")
-plot!(toss_range,stdtosses,layout = (2,1),subplot=2,xlabel="Tosses",ylabel="STD # Heads")
+plot!(toss_range,stdtosses,subplot=2,xlabel="Tosses",ylabel="STD # Heads")
+
+function compute_std_of_mean(N,p=0.5,K=1000)
+    meantosses = [mean(flipNcoins(N,p)) for _ in 1:K]
+    return std(meantosses)
+end
+
+Nrange = 1:100
+stdmeantosses = [compute_std_of_mean(N,0.5) for N in Nrange]; #This is called a list compression
+scatter(Nrange,stdmeantosses,xlabel="Tosses",ylabel="Std of Average # of Heads")
+
+
+
 
 numheads = [sum(flipNcoins(15,0.5)) for k in 1:100_000]
 histogram(numheads,bins=25,normalize=:probability,xlabel="# of Heads",ylabel="Probability")
@@ -84,7 +98,8 @@ function simulateAR1(μ,ρ,σ,x0,T)
     return x[2:end]
 end
 
-plot(1:100,simulateAR1(0.,0.8,1.,0,100),xlabel="Time",ylabel="AR(1)")
+N=1000
+plot(1:N,simulateAR1(0.,0.999,1.,0,N),xlabel="Time",ylabel="AR(1)")
 
 mutable struct AR1
     μ::Float64 #Mean of the AR(1)
@@ -100,7 +115,7 @@ println(ar1.ρ)
 
 Simulates an AR(1) ar for T periods with initial value x0
 """
-function simulateAR1(ar,x0,T)
+function simulateAR1(ar::AR1,x0,T)
     x = zeros(T+1)# initialize
     x[1] = x0
     for t in 1:T
@@ -127,6 +142,7 @@ function simulateAR1(ar,x0,T)
 end
 plot(1:100,simulateAR1(ar1,0.,100),xlabel="Time",ylabel="AR(1)")
 
+ar1.ρ=0.99
 T = 50
 N = 1000
 X = zeros(T,N)
@@ -225,7 +241,7 @@ P = [0.6 0.4;
 s = simulate(MarkovChain(P),100,init=1)
 println(s)
 
-mc_ar1 = rouwenhorst(51,0.9,0.014)
+mc_ar1 = rouwenhorst(10,0.99,0.014)
 
 X = zeros(15,1000)
 for i in 1:1000
@@ -243,11 +259,11 @@ D,V = eigen(P')  #should be left unit eigenvector
 
 #or 
 
-πstar2 = (P^200)[15,:] #probability distribution 1000 periods in the future
+πstar2 = (P^200)[1,:] #probability distribution 1000 periods in the future
 println(norm(πstar -πstar2))
 
 @time D,V = eigen(P');
-@time πstar2 = (P^200)[15,:];
+@time πstar2 = (P^200)[1,:];
 
 s_end = zeros(Int,10000)
 for i in 1:10000
@@ -255,4 +271,4 @@ for i in 1:10000
 end
 
 histogram(s_end,bins=51,normalize=:probability,xlabel="State",ylabel="Probability")
-plot!(1:51,πstar2)
+plot!(1:length(πstar2),πstar2)
