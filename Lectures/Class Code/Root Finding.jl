@@ -252,6 +252,7 @@ plot(solveMITshock(para,k0,20).k,label="Multivariate Solution 20",xlabel="Time",
 plot!(solveMITshock(para,k0,30).k,label="Multivariate Solution 30",xlabel="Time",ylabel="Capital Stock")
 plot!(solveMITshock(para,k0,40).k,label="Multivariate Solution 40",xlabel="Time",ylabel="Capital Stock")
 plot!(solveMITshock(para,k0,50).k,label="Multivariate Solution 50",xlabel="Time",ylabel="Capital Stock")
+plot!(solveMITshock(para,k0,100).k[1:50],label="Multivariate Solution 50",xlabel="Time",ylabel="Capital Stock")
 
 
 
@@ -327,23 +328,27 @@ end
 Internally calibrates κ to target an average θ of 1
 """
 function calibrate_κ!(dmp::DMPModel)
-    θvec0 = equilibrium(dmp) #first find the equilibrium for a given κ
+    #θvec0 = equilibrium(dmp) #first find the equilibrium for a given κ
     function res(κθvec)
         κ,θvec = κθvec[1],κθvec[2:end]
         dmp.κ = κ #note changing value form dmp
         return [1-(dmp.P^500*θvec)[1]; #long run θ is 1
                 residuals(dmp,θvec)]#eqb residuals must be 0
     end
-    κθvec0 = [dmp.κ;θvec] #
+    S = length(dmp.z)
+    κθvec0 = [dmp.κ;ones(S)] #
 
     dmp.κ =  nlsolve(res,κθvec0).zero[1]
 
     return equilibrium(dmp)
 end
 
-residuals(model,zeros(51))
+residuals(model,ones(51))
+fun = x->residuals(model,x)
+ret = nlsolve(fun,ones(51))
+
 θvec = equilibrium(model)
-println(model.P^500*θvec)
+println((model.P^500*θvec)[1])
 θvec = calibrate_κ!(model)
 println(model.P^500*θvec)
 
@@ -401,7 +406,7 @@ function impulseResponse(dmp,u0,s0,s0′,T,N=100)
 end
 
 
-df_irf = impulseResponse(model,0.057,25,30,20)
+df_irf = impulseResponse(model,0.057,25,20,20,100)
 
 @df df_irf plot(:t,:u,layout=(2,2),subplot=1,ylabel="Unemployment")
 @df df_irf plot!(:t,:v,subplot=2,ylabel="Vacancy Rate")
