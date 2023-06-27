@@ -79,7 +79,7 @@ function pricingLQ(β,γ_1,γ_2,ρ)
 
     return LQProblem(β,R,Q,A,B,zeros(1,1),zeros(1,1))
 end
-lq = pricingLQ(1.,1.,2.,0.9);
+lq = pricingLQ(1.,1.,2.,0.1);
 
 solve_ricatti!(lq)
 x,u = simulate_lq(lq,[1.,0.],20)
@@ -354,13 +354,13 @@ function linearize_sequence(model,F,x̄,ȳ,ε̄,T=100)
     #setup for t=0
     A[:,1] = F̄_ε
     J[:,1,:,1] = [F̄_x F̄_y]
-    J[:,1,nx+1:end,2] =  F̄_y′
+    J[:,1,:,2] =  [zeros(nx+ny,nx) F̄_y′]
     for t in 2:T-1
-        J[:,t,1:nx,t-1] = F̄_x_ 
+        J[:,t,:,t-1] =[F̄_x_ zeros(nx+ny,ny)] 
         J[:,t,:,t] = [F̄_x F̄_y]
-        J[:,t,nx+1:end,t+1] =  F̄_y′
+        J[:,t,:,t+1] = [zeros(nx+ny,nx) F̄_y′]
     end
-    J[:,T,1:nx,T-1] = F̄_x_ 
+    J[:,T,:,T-1] =[F̄_x_ zeros(nx+ny,ny)] 
     J[:,T,:,T] = [F̄_x F̄_y]
 
     J = reshape(J,(nx+ny)*(T),:)
@@ -414,7 +414,7 @@ df2 = simulate_RBC_sequence(model,200,100)
 @df df2 plot!(:t,:c,label="Sequence Linearization",xlabel="Time",ylabel="Consumption")
 
 using MATLAB
-mat"cd 'Perturbation Theory'" #Mod file has to be in current directory
+mat"cd 'Lectures/Perturbation Theory'" #Mod file has to be in current directory
 mat"dynare RBC.mod" #As easy as that
 
 c_dyn = @mget c_e;
