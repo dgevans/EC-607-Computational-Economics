@@ -1,6 +1,5 @@
-## Analytical Example
-using Plots,LinearAlgebra #plotting libraries
-default(linewidth=2,legend=false,margin=5Plots.mm)
+using Plots,LinearAlgebra
+default(linewidth=2,legend=false,margin=10Plots.mm)
 A = 1
 α = 0.33
 β = 0.95
@@ -22,7 +21,7 @@ E_infty = (1-β)^(-1) * (log(A*(1-β*α))+
 F_infty = α/(1-β*α)
 
 #Now plot value functions
-fig = plot( k->0 ,0.01,0.5,color=:lightblue,xlabel="Capital",ylabel="Value Function")
+plot( k->0 ,0.01,0.5,color=:lightblue,xlabel="Capital",ylabel="Value Function")
 for j in 1:100
     #Add value function to plot for each iteration j in 1,2,..,100
     plot!(k->E[j]+F[j]*log(k),0.01,0.5,color=:lightblue)
@@ -30,7 +29,6 @@ end
 #Add limiting value function
 plot!(k->E_infty+F_infty*log(k),0.01,0.5,color=:red)
 
-#Now plot the policy rules]
 plot( k->0 ,0.01,0.5,color=:lightblue,xlabel="Capital",ylabel="Next Period Capital")
 #NOTE only 10 iterations
 for j in 1:10
@@ -41,9 +39,6 @@ end
 plot!(k->(β*F_infty)/(1+β*F_infty)*A*k^α,0.01,0.5,color=:red)
 #add line representing kprime = k
 plot!(k->k,0.01,0.5,color=:black)
-
-
-## McCall Search Model
 
 """
     mccallbellmanmap(v,w,π,c,β)
@@ -91,9 +86,8 @@ for j in 2:J
     V[j,:] = mccallbellmanmap(V[j-1,:],w,p,c,β)
 end
 
-#Code to solve the McCall Model
 """
-    solvemccall(w,π,c,β[,ϵ])
+    solvemccall(w,p,c,β[,ϵ])
 
 Iterates the McCall search model bellman equation until convergence criterion 
 ϵ is reached
@@ -117,16 +111,13 @@ function solvemccall(w,p,c,β,ϵ=1e-6)
         v = v_new #reset v
     end
     return v
-end 
+end
 
-#Test solution
 v = solvemccall(w,p,c,β)
 println(v - mccallbellmanmap(v,w,p,c,β))
 
 scatter(w,v,xlabel="Wage",ylabel="Value Function")
 
-
-# RBC Model
 """
    RBCbellmanmap(V,kgrid,A,α,β)
 
@@ -160,6 +151,13 @@ function RBCbellmanmap(V,  kgrid,A,α,β)
     return V_out,n_pol,k_pol
 end
 
+N = 500
+A = 1.
+α = 0.33
+β = 0.95
+kgrid = LinRange(0.01,0.5,N)
+V,n_pol,k_pol = RBCbellmanmap(zeros(N),kgrid,A,α,β )
+println(V)
 
 """
     RBCsolve_bellman(V0,kgrid,A,α ,β[,ϵ=1e-6])
@@ -185,35 +183,13 @@ function RBCsolve_bellman(V0,kgrid,A,α,β,ϵ=1e-6)
     return V,n_pol,k_pol
 end
 
-N = 50
-A = 1.
-α = 0.33
-β = 0.95
-kgrid = LinRange(0.01,0.5,N)
 V,n_pol,k_pol = RBCsolve_bellman(zeros(N),kgrid,A,α,β )
-
-#Plot value function
 plot(k->E_infty+F_infty*log(k),.01,.5,color=:red,label="Analytical",legend=true)
 scatter!(kgrid,V,label="Approximation",color=:lightblue,xlabel="Capital",ylabel="Value Function")
 
-
-#plot capital policy rules
 plot(k->(β*F_infty)/(1+β*F_infty)*A*k^α,.01,.5,color=:red,label="Analytical",legend=true)
 scatter!(kgrid,k_pol,label="Approximation",color=:lightblue,xlabel="Capital",ylabel="Capital Next Period")
 
-
-
-## Extensions
-N = 50
-kgrid = LinRange(0.01,0.5,N)
-@time RBCsolve_bellman(zeros(N),kgrid,A,α,β);
-
-N = 500
-kgrid = LinRange(0.01,0.5,N)
-@time RBCsolve_bellman(zeros(N),kgrid,A,α,β);
-
-
-##Simulating Capital
 """
     simulate_k(n_0,T,n_pol,kgrid)
 
@@ -232,9 +208,17 @@ function simulate_k(n_0,T,n_pol,kgrid)
 
     return k
 end
+
 plot(simulate_k(1,25,n_pol,kgrid),xlabel="Time",ylabel="Capital Stock")
 
-# Howard improvement algorithm
+N = 50
+kgrid = LinRange(0.01,0.5,N)
+@time RBCsolve_bellman(zeros(N),kgrid,A,α,β);
+
+N = 500
+kgrid = LinRange(0.01,0.5,N)
+@time RBCsolve_bellman(zeros(N),kgrid,A,α,β);
+
 """
     RBCbellmanmap_howard(V,nprime,kgrid,A,α,β)
 
@@ -259,7 +243,6 @@ function RBCbellmanmap_howard(V,n_pol,kgrid,A,α,β)
     end
     return V_new
 end;
-
 
 """
     RBCsolve_bellman_howard(V0,H,kgrid,A,α ,β[,ϵ=1e-6])
@@ -299,8 +282,6 @@ function RBCsolve_bellman_howard(V0,H,kgrid,A,α,β;ϵ=1e-6)
     return V,n_pol,k_pol
 end;
 
-
-#Test
 N = 50
 kgrid = LinRange(0.01,0.5,N)
 #evaluate once to compile
@@ -311,17 +292,14 @@ RBCsolve_bellman_howard(zeros(N),100,kgrid,A,α,β);
 
 N = 500
 kgrid = LinRange(0.01,0.5,N)
-#evaluate once to compile
-RBCsolve_bellman_howard(zeros(N),100,kgrid,A,α,β);
 #Test Timing
 @time RBCsolve_bellman_howard(zeros(N),100,kgrid,A,α,β);
 @time RBCsolve_bellman(zeros(N),kgrid,A,α,β);
 
-
 #Uncertainty
 A = [0.97,1.03]
 #Transition matrix
-Π = [0.6 0.4;0.4 0.6]
+Π = [0.6 0.4;0.4 0.6];
 
 """
     RBCbellmanmap_stochastic(V,kgrid,A,Π,α,β,U)
@@ -362,7 +340,6 @@ function RBCbellmanmap_stochastic(V,kgrid,A,Π,α,β)
     return V_new,n_pol,k_pol
 end;
 
-
 """
     RBCsolve_bellman_stochastic(V0,kgrid,A,α ,β[,ϵ=1e-6])
 
@@ -400,8 +377,6 @@ end
 xlabel!("Capital")
 ylabel!("Capital Next Period")
 
-
-##simulation
 using QuantEcon
 """
     simulate_k_stochastic(n_0,T,n_pol,kgrid,Π)
@@ -411,6 +386,7 @@ initial capital state kgrid[n_0] and aggregate state s_0 for T periods
 """
 function simulate_k_stochastic(n_0,s0,T,n_pol,kgrid,Π)
     k = zeros(T+1) # capital stock
+    c = zeros(T) #consumption
     n = zeros(Int,T+1) #index of the capital stock
     s = simulate_indices(MarkovChain(Π),T;init=s0)
     n[1] = n_0
@@ -418,9 +394,11 @@ function simulate_k_stochastic(n_0,s0,T,n_pol,kgrid,Π)
     for t in 1:T
         n[t+1] = n_pol[s[t],n[t]] #get the policy rule for the index
         k[t+1] = kgrid[n[t+1]]
+        c[t] = A[s[t]]*k[t]^α - k[t+1]
     end
 
-    return k
+    return k,c
 end
 
-scatter(simulate_k_stochastic(1,1,25,n_pol,kgrid,Π),xlabel="Time",ylabel="Capital Stock")
+scatter(simulate_k_stochastic(1,1,25,n_pol,kgrid,Π)[1],xlabel="Time",ylabel="Capital Stock")
+scatter(simulate_k_stochastic(1,1,25,n_pol,kgrid,Π)[2],xlabel="Time",ylabel="Consumption")

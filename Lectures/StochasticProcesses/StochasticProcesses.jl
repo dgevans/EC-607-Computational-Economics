@@ -256,3 +256,24 @@ end
 
 histogram(s_end,bins=51,normalize=:probability,xlabel="State",ylabel="Probability")
 plot!(1:51,πstar2)
+
+
+
+using QuantEcon
+
+mc_ar1 = rouwenhorst(6,0.9,0.014)
+
+X = zeros(15,1000)
+for i in 1:1000
+    X[:,i] = simulate(mc_ar1,15,init=1)
+end
+
+P,X̄ = mc_ar1.p,mc_ar1.state_values
+
+P^14*X̄
+
+using LinearAlgebra
+D,V = eigen(P')  #should be left unit eigenvector
+
+πstar = V[:,isapprox.(D,1)][:]
+πstar ./= sum(πstar)#Need to normalize for probability

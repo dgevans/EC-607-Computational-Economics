@@ -6,12 +6,12 @@ f_univ(x) = 2x^2+3x+1
 plot(f_univ,-2.,1)
 
 #Finds global minimum
-res = optimize(f_univ,-2.0,1.0,GoldenSection())
-Optim.minimizer(res)
+ret = optimize(f_univ,-2.0,1.0,GoldenSection())
+Optim.minimizer(ret)
 
 #Lower bound binds
-res = optimize(f_univ,-0.5,1.0,GoldenSection())
-Optim.minimizer(res)
+ret = optimize(f_univ,-0.5,1.0,GoldenSection())
+Optim.minimizer(ret)
 
 optimize(f_univ,-2.0,1.0,Brent()) #run once to precompile
 @time res = optimize(f_univ,-2.0,1.0,Brent());
