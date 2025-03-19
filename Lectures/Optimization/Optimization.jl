@@ -20,7 +20,7 @@ optimize(f_univ,-2.0,1.0,Brent()) #run once to precompile
 
 #rosenbrock function
 f_ros(x) = (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
-optimize(f_ros,10*ones(2),NelderMead())
+ret = optimize(f_ros,10*ones(2),NelderMead())
 
 #uses by default AffineSimplexer()
 Optim.simplexer(Optim.AffineSimplexer(),[0.,1.]);
@@ -67,13 +67,13 @@ inequality_constraint!(opt, (x,g) -> myconstraint!(x,g,-1,1))
 (minf,minx,ret) = NLopt.optimize(opt, [3., 1.])
 println("got $minf at $minx after $count iterations (returned $ret)")
 
-opt = Opt(:LD_SLSQP, 2)
+opt = Opt(:LN_COBYLA, 2)
 lower_bounds!(opt, [-Inf, 0.])
 ftol_rel!(opt,1e-4)
 
 min_objective!(opt, myfunc!)
-inequality_constraint!(opt, (x,g) -> myconstraint!(x,g,2,0))
-inequality_constraint!(opt, (x,g) -> myconstraint!(x,g,-1,1))
+inequality_constraint!(opt, (x,g) -> myconstraint!(x,[],2,0))
+inequality_constraint!(opt, (x,g) -> myconstraint!(x,[],-1,1))
 
 (minf,minx,ret) = NLopt.optimize(opt, [3., 1.])
 println("got $minf at $minx after $count iterations (returned $ret)")
@@ -165,7 +165,7 @@ upper_bounds!(opt, [0.8,Inf])
 ftol_rel!(opt,1e-8)
 
 min_objective!(opt, (x,g)->-government_welfare(x[1],x[2],αvec,σ,γ))
-equality_constraint!(opt, (x,g) -> -budget_residual(x[1],x[2],αvec,σ,γ))
+inequality_constraint!(opt, (x,g) ->- budget_residual(x[1],x[2],αvec,σ,γ))
 
 @time (minf,minx_nlopt,ret) = NLopt.optimize(opt, [0.3, 0.3])
 println(minx_nlopt[1])

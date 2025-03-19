@@ -30,6 +30,7 @@ plt
 #Using linear B-Splines
 f(x) = log.(x.+0.1) # our function to interpolate
 xvec = LinRange(0,1,5) #knots for the B splines
+xvec_alt = [0.,0.1,0.2,0.5,1.]
 function fhat(x,f,xvec)
     K = length(xvec)
     ret = 0.
@@ -40,29 +41,31 @@ function fhat(x,f,xvec)
 end
 plot(x->f(x),0,1,label="True Function",legend=true)
 plot!(x->fhat(x,f,xvec),0,1,label="Approximation")
-
+plot!(x->fhat(x,f,xvec_alt),0,1,label="Approximation Alt")
 using BasisMatrices
 #Most basic usage
-xvec = LinRange(0,1,4) #break points for the B splines
-fhat1 = Interpoland(SplineParams(xvec,0,1),f) #linear Interpolation
-fhat3 = Interpoland(SplineParams(xvec,0,3),f) #cubic Interpolation
+xvec1 = LinRange(0,1,6)
+xvec3  = LinRange(0,1,4) #break points for the B splines
+fhat1 = Interpoland(SplineParams(xvec1,0,1),f) #linear Interpolation
+fhat3 = Interpoland(SplineParams(xvec3,0,3),f) #cubic Interpolation
 
 plot(x->f(x),0,1,label="True Function",legend=true)
 plot!(x->fhat1(x),0,1,label="Linear Approx.")
 plot!(x->fhat3(x),0,1,label="Cubic Approx.",ylabel="f(x)",xlabel="x")
 
-xvec = LinRange(0,1,10)
-qbasis = SplineParams(xvec,0,2)
+xvec = LinRange(0,1,5)
+qbasis = SplineParams(xvec,0,3)
 Φ = BasisMatrix(Basis(qbasis),Direct(),LinRange(0,1,1000)).vals[1]'
 plt = scatter(nodes(qbasis),0*nodes(qbasis))
 for i in 1:size(Φ,1)
     plot!(LinRange(0,1,1000),Φ[i,:])
 end
+scatter!(xvec,0*nodes(qbasis))
 plt
 
-plot(x->f(x),0,2,label="True Function",legend=true)
-plot!(x->fhat1(x),0,2,label="Linear Approx.")
-plot!(x->fhat3(x),0,2,label="Cubic Approx.",ylabel="f(x)",xlabel="x")
+plot(x->f(x),0,5,label="True Function",legend=true)
+plot!(x->fhat1(x),0,5,label="Linear Approx.")
+plot!(x->fhat3(x),0,5,label="Cubic Approx.",ylabel="f(x)",xlabel="x")
 
 f2(x) = x < 0.5 ? 0 : x - 0.5 # returns 0 if x < 0.5 otherwise x - 0.5
 fhat1 = Interpoland(SplineParams(xvec,0,1),x->f2.(x))
@@ -73,7 +76,7 @@ plot!(x->fhat3(x),0,1,label="Cubic Approx.",ylabel="f(x)",xlabel="x")
 
 plt = plot(ylabel="x^k",xlabel="x",legend=true)
 for k in 1:9
-    plot!(x->x.^k,0,1,label="x^$(k-1)")
+    plot!(x->x.^k,-1,1,label="x^$(k-1)")
 end
 plt
 
@@ -115,9 +118,9 @@ end
 plt
 
 #using BasisMatrix code
-chebbasis = Basis(ChebParams(9,-1,1))
+chebbasis = Basis(ChebParams(15,-1,1))
 xnodes = nodes(chebbasis)[1] #Gives nodes for the chebyshev Polynomials (zeros)
-plot(x->T(x,10),-1,1,label="Chebyshev Polynomial")
+plot(x->T(x,21),-1,1,label="Chebyshev Polynomial")
 scatter!(xnodes,0 .* xnodes,label="Nodes",legend=true)
 
 f_cheb = Interpoland(chebbasis,f_runge)
@@ -128,7 +131,7 @@ plot!(x->f_cheb(x),-1,1,label="Chebyshev",xlabel="x",ylabel="f(x)")
 plot(x->fhatmonomial(x,w)-f_runge(x),-1,1,label="Monomial",legend=true)
 plot!(x->f_cheb(x)-f_runge(x),-1,1,label="Chebyshev",xlabel="x",ylabel="Errors")
 
-xgrid = LinRange(-1,1,9) #use 9 grid points like chebyshev
+xgrid = LinRange(-1,1,13) #use 9 grid points like chebyshev
 f_spline = Interpoland(SplineParams(xgrid,0,3),f_runge)
 plot(f_runge,-1,1,label="Runge",legend=true)
 plot!(x->f_spline(x),-1,1,label="Cubic Spline")
@@ -156,7 +159,7 @@ level k given parameters in para.
 function optimalpolicy(para::NCParameters,Vprime,k)
     @unpack A,α,β,kgrid = para
     k_bounds = [kgrid[1],kgrid[end]]
-    f_objective(kprime) = -( log(A*k^α-kprime)+β*Vprime(kprime) ) #stores objective as function
+    f_objective(kprime) =-( log(A*k^α-kprime)+β*Vprime(kprime) )#stores objective as function
     k_max = min(A*k^α-.001,k_bounds[2]) #Can't have negative consumptions
     result = optimize(f_objective,k_bounds[1],k_max)
     return (kprime = result.minimizer,V=-result.minimum) #using named tuples 
@@ -171,7 +174,8 @@ function bellmanmap(para::NCParameters,Vprime::Interpoland)
     kbasis = Vprime.basis
     #sometimes it's helpful to tell julia what type a variable is
     knodes = nodes(kbasis)[1]::Vector{Float64}
-    V = map(k->optimalpolicy(para,Vprime,k).V,knodes)
+    TVprime = k->optimalpolicy(para,Vprime,k).V
+    V = map(TVprime,knodes)
     return Interpoland(kbasis,V)
 end;
 
@@ -233,6 +237,30 @@ plot!(k->kprime3(k),kmin,kmax,label="Cubic Spline",xlabel="Capital",ylabel="Futu
 plot(k->kprime1(k).-ktruth(para,k),kmin,kmax,label="Linear Spline",legend=true)
 plot!(k->kprime2(k).-ktruth(para,k),kmin,kmax,label="Quadratic Spline")
 plot!(k->kprime3(k).-ktruth(para,k),kmin,kmax,label="Cubic Spline",xlabel="Capital",ylabel="Future Capital")
+
+
+"""
+    getV0(para::NCParameters)
+
+Initializes V0(k) = 0 using the kgrid of para
+"""
+function getV0Cheb(para::NCParameters,order)
+    @unpack kgrid,spline_order = para
+
+    kbasis = Basis(ChebParams(order,kgrid[1],kgrid[end]))
+
+    return Interpoland(kbasis,k->0 .*k)
+end
+
+kprime5cheb,_ = solvebellman(para,getV0Cheb(para,5))
+kprime10cheb,_ = solvebellman(para,getV0Cheb(para,10))
+kprime15cheb,_ = solvebellman(para,getV0Cheb(para,15))
+
+plot(k->ktruth(para,k),kmin,kmax,label="Truth",legend=true)
+plot!(k->kprime5cheb(k),kmin,kmax,label="order 5 Chebyshev")
+plot!(k->kprime10cheb(k),kmin,kmax,label="order 10 Chebyshev")
+plot!(k->kprime15cheb(k),kmin,kmax,label="order 15 Chebyshev",xlabel="Capital",ylabel="Future Capital")
+
 
 
 basis_x = SplineParams(LinRange(-1,1,5),0,3) #cubic splines along x

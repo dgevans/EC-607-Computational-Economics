@@ -339,7 +339,7 @@ function solve_transition(AM,lnΘ0=0.05,T=200)
         cft = compute_consumption_path(AM,rt,wt)
         K̂t = compute_capital_path(AM,cft,rt,wt)
         diff = norm(Kt-K̂t[1:T],Inf)
-
+        println(diff)
         Kt = (1-ξ).*Kt .+ ξ.*K̂t[1:T]
     end
     rt = α.*Θt.*Kt.^(α-1) .- δ

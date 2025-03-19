@@ -62,8 +62,8 @@ end;
 
 scatter(1:10,expectation_normal.(exp,0.,1.,1:10),xlabel="# nodes")
 
-ξx,wx = gausslegendre(10)
-ξy,wy = gausslegendre(20)
+ξx,wx = gausslegendre(3)
+ξy,wy = gausslegendre(3)
 
 ξ = hcat(kron(ones(length(ξy)),ξx),kron(ξy,ones(length(ξx))))
 w = kron(wy,wx)

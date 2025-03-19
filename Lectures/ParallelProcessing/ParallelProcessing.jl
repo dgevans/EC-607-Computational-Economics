@@ -272,7 +272,7 @@ end
 end
 
 @mpi_do manager begin
-    data = rand(1)
+    data = rand(2)
     println("Hi, I'm rank $(MPI.Comm_rank(comm)) and my data is $data")
     gathered_data = MPI.Gather(data,0,comm) #Bcast data using root 0 and COMM_WORLD communicator
     println("Hi, I'm rank $(MPI.Comm_rank(comm)) here is the combined data  $gathered_data")
@@ -334,10 +334,12 @@ end;
     sample = draw_endofT_sample(ar,50000,1000) #note each process draws its own sample 
     #How to get them all together
 end;
+@fetchfrom 5 sample
 
 @mpi_do manager begin
+    using Statistics
     samples = MPI.Allgather(sample,comm) #All the processes gather data
-    println(sum(samples))
+    println(std(samples))
 end
 
 @mpi_do manager begin

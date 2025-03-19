@@ -216,6 +216,7 @@ end;
 using ForwardDiff
 model = RBCModel()
 x̄,ȳ,ε̄ = compute_steadystate(model)
+F_RBC(model,x̄,x̄,ȳ,ȳ,ε̄)
 F̄_ε = ForwardDiff.jacobian(ε->F_RBC(model,x̄,x̄,ȳ,ȳ,ε),ε̄)
 F̄_x_ = ForwardDiff.jacobian(x_->F_RBC(model,x_,x̄,ȳ,ȳ,ε̄),x̄)
 F̄_x = ForwardDiff.jacobian(x->F_RBC(model,x̄,x,ȳ,ȳ,ε̄),x̄)

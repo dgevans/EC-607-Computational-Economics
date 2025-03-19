@@ -72,7 +72,6 @@ function setupgrids_shocks!(HH::HHModel, curv=1.7)
         cf[s]= Interpoland(abasis,c)
     end
 end;
-
 """
     optimalPolicy(HH,Vf′)
 
@@ -185,8 +184,27 @@ end
 solveHHproblem_eg!(HH)
 setupgrids_shocks!(HH)
 @time solveHHproblem_eg!(HH);
+HH2 = HHModel()
+HH2.Na = 30
+setupgrids_shocks!(HH2)
+solveHHproblem_eg!(HH2)
+HH3 = HHModel()
+HH3.Na = 200
+setupgrids_shocks!(HH3)
+solveHHproblem_eg!(HH3)
+
+HH4 = HHModel()
+HH4.Na = 400
+setupgrids_shocks!(HH4)
+solveHHproblem_eg!(HH4)
+plot(a->HH2.cf[1](a),0,5,ylabel="Consumption")
+plot!(a->HH.cf[1](a),0,5,ylabel="Consumption")
+plot!(a->HH3.cf[1](a),0,5,ylabel="Consumption")
+plot!(a->HH4.cf[1](a),0,5,ylabel="Consumption")
 
 """
+    ee_errors(HH,agrid)
+
     ee_errors(HH,agrid) 
 
 Check's the Euler equation errors of a solution on a grid of assets
@@ -441,7 +459,7 @@ function find_stationarydistribution!(AM::AiyagariModel)
     #make sure we don't go beyond bounds.  Shouldn't bind if bmax is correct
     a′ = max.(min.(a′,a̅),a̲)
     
-    Qa = BasisMatrix(Basis(SplineParams(a,0,1)),Direct(),reshape(a′,Ia*Nϵ)).vals[1]
+    Qa = BasisMatrix(Basis(SplineParams(a,0,1)),Direct(),a′[:]).vals[1]
     Q = spzeros(Ia*Nϵ,Ia*Nϵ)
     for s in 1:Nϵ
         Q[1+(s-1)*Ia:s*Ia,:] = kron(reshape(Π[s,:],1,:),Qa[1+(s-1)*Ia:s*Ia,:]) 
